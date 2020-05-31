@@ -11,6 +11,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @author Ocelot
@@ -26,7 +27,7 @@ public class FileChunkMessage extends LoginMessage
         this.data = data;
     }
 
-    public static void sendTo(int chunkSize, Path file, NetworkEvent.Context ctx)
+    public static void sendTo(int chunkSize, Path file, Runnable successListener, NetworkEvent.Context ctx)
     {
         ServerDownloader.THREAD_EXECUTOR.execute(() ->
         {
@@ -39,6 +40,7 @@ public class FileChunkMessage extends LoginMessage
                     ServerDownloaderMessages.LOGIN.reply(new FileChunkMessage(file.getFileName().toString(), Arrays.copyOf(buffer, chunkLen)), ctx);
                 }
                 ServerDownloaderMessages.LOGIN.reply(new FileCompletionMessage(file.getFileName().toString()), ctx);
+                successListener.run();
             }
             catch (IOException e)
             {

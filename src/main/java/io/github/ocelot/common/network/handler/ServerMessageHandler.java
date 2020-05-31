@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 /**
@@ -38,6 +39,7 @@ public class ServerMessageHandler implements MessageHandler
             if (msg.isRequestingFiles())
             {
                 Path path = Paths.get(ModFileManager.FOLDER_NAME);
+                AtomicInteger sendCount = new AtomicInteger();
                 missingFiles.forEach(fileName ->
                 {
                     Path file = path.resolve(fileName);
@@ -47,11 +49,15 @@ public class ServerMessageHandler implements MessageHandler
                         return;
                     }
                     ServerDownloaderMessages.LOGIN.reply(new RequestFileResponseMessage(fileName, true), ctx.get());
-                    FileChunkMessage.sendTo(1024, Paths.get(ModFileManager.FOLDER_NAME, fileName), ctx.get());
-                    ctx.get().setPacketHandled(true);
+                    FileChunkMessage.sendTo(4096, Paths.get(ModFileManager.FOLDER_NAME, fileName), () ->
+                    {
+                        if (sendCount.incrementAndGet() >= missingFiles.size())
+                        {
+                            ServerDownloaderMessages.LOGIN.reply(new DownloadCompletionMessage(), ctx.get());
+                            ctx.get().getNetworkManager().closeChannel(new StringTextComponent("Client needs to restart to apply files."));
+                        }
+                    }, ctx.get());
                 });
-                ServerDownloaderMessages.LOGIN.reply(new DownloadCompletionMessage(), ctx.get());
-                ctx.get().getNetworkManager().closeChannel(new StringTextComponent("Client needs to restart to apply files."));
             }
             else
             {

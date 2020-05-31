@@ -70,15 +70,14 @@ public class ClientMessageHandler implements MessageHandler
     public void handleFileCompletionMessage(FileCompletionMessage msg, Supplier<NetworkEvent.Context> ctx)
     {
         // TODO notify screen of successful or unsuccessful file download
-        if (ClientModDownloader.complete(msg.getFileName()))
-            ctx.get().getNetworkManager().closeChannel(new StringTextComponent("TEST"));
+        ClientModDownloader.complete(msg.getFileName());
         ctx.get().setPacketHandled(true);
     }
 
     @Override
     public void handleDownloadCompletionMessage(DownloadCompletionMessage msg, Supplier<NetworkEvent.Context> ctx)
     {
-        ctx.get().getNetworkManager().closeChannel(new StringTextComponent("TEST"));
+        ctx.get().getNetworkManager().closeChannel(new StringTextComponent("A restart is needed to apply files."));
         ctx.get().setPacketHandled(true);
         // TODO notify screen that a restart is required
         Minecraft.getInstance().shutdown();
