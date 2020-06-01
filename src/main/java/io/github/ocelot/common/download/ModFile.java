@@ -53,8 +53,17 @@ public class ModFile
         return url;
     }
 
+    @Override
+    public String toString()
+    {
+        return "ModFile{" +
+                "modId='" + this.modId + '\'' +
+                ", version='" + this.version + '\'' +
+                '}';
+    }
+
     public static ModFile deserialize(PacketBuffer buf)
     {
-        return new ModFile(buf.readString(), buf.readString(), buf.readBoolean() ? buf.readString() : null);
+        return new ModFile(buf.readString(32767), buf.readString(32767), buf.readBoolean() ? buf.readString(32767) : null);
     }
 }

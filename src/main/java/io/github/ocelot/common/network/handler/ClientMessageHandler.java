@@ -7,7 +7,6 @@ import io.github.ocelot.common.init.ServerDownloaderMessages;
 import io.github.ocelot.common.network.NotifyFileStatusMessage;
 import io.github.ocelot.common.network.NotifyFileStatusResponseMessage;
 import net.minecraft.client.Minecraft;
-import net.minecraft.util.text.StringTextComponent;
 import net.minecraftforge.fml.network.NetworkEvent;
 
 import java.util.Set;
@@ -30,10 +29,7 @@ public class ClientMessageHandler implements MessageHandler
         Set<ModFile> missingFiles = ModFileManager.getMissingFiles(msg.getServerFiles());
         ServerDownloaderMessages.LOGIN.reply(new NotifyFileStatusResponseMessage(), ctx.get());
         if (!missingFiles.isEmpty())
-        {
-            ctx.get().getNetworkManager().closeChannel(new StringTextComponent("Missing mod files: " + missingFiles)); // TODO lang
-            Minecraft.getInstance().displayGuiScreen(new DownloadModFilesScreen(Minecraft.getInstance().currentScreen));
-        }
+            Minecraft.getInstance().displayGuiScreen(new DownloadModFilesScreen(Minecraft.getInstance().currentScreen, missingFiles));
         ctx.get().setPacketHandled(true);
     }
 

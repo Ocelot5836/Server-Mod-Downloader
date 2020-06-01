@@ -55,7 +55,7 @@ public class ModFileManager
                         {
                             JsonObject modJson = json.get(i).getAsJsonObject();
                             modId = modJson.get("modId").getAsString();
-                            if ((!modJson.has("clientOnly") || modJson.get("clientOnly").getAsBoolean()) && !ModList.get().isLoaded(modId))
+                            if (!(modJson.has("clientOnly") && modJson.get("clientOnly").getAsBoolean()) && !ModList.get().isLoaded(modId))
                             {
                                 LOGGER.warn(modId + " does not appear to be a valid or loaded mod. Skipping!");
                                 continue;
