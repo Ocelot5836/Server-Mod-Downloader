@@ -42,10 +42,6 @@ public class ServerDownloaderMessages
                 buildLoginPacketList(local -> local ? Collections.emptyList() : Collections.singletonList(Pair.of(NotifyFileStatusMessage.class.getName(), new NotifyFileStatusMessage()))).
                 add();
         registerIndexMessage(NotifyFileStatusResponseMessage.class, NetworkDirection.LOGIN_TO_SERVER, NotifyFileStatusResponseMessage::encode, NotifyFileStatusResponseMessage::decode, (msg, ctx) -> getHandler(ctx).handleNotifyFileStatusResponseMessage(msg, ctx)).add();
-        registerMessage(RequestFileResponseMessage.class, NetworkDirection.LOGIN_TO_CLIENT, RequestFileResponseMessage::encode, RequestFileResponseMessage::decode, (msg, ctx) -> getHandler(ctx).handleRequestFileResponseMessage(msg, ctx)).add();
-        registerMessage(FileChunkMessage.class, NetworkDirection.LOGIN_TO_CLIENT, FileChunkMessage::encode, FileChunkMessage::decode, (msg, ctx) -> getHandler(ctx).handleFileChunkMessage(msg, ctx)).add();
-        registerMessage(FileCompletionMessage.class, NetworkDirection.LOGIN_TO_CLIENT, FileCompletionMessage::encode, FileCompletionMessage::decode, (msg, ctx) -> getHandler(ctx).handleFileCompletionMessage(msg, ctx)).add();
-        registerMessage(DownloadCompletionMessage.class, NetworkDirection.LOGIN_TO_CLIENT, DownloadCompletionMessage::encode, DownloadCompletionMessage::decode, (msg, ctx) -> getHandler(ctx).handleDownloadCompletionMessage(msg, ctx)).add();
     }
 
     private static <MSG> SimpleChannel.MessageBuilder<MSG> registerMessage(Class<MSG> messageType, NetworkDirection direction, BiConsumer<MSG, PacketBuffer> encoder, Function<PacketBuffer, MSG> decoder, BiConsumer<MSG, Supplier<NetworkEvent.Context>> messageConsumer)

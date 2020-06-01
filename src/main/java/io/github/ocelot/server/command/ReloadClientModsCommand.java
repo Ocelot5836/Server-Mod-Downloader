@@ -15,7 +15,7 @@ public class ReloadClientModsCommand
     {
         dispatcher.register(Commands.literal("reloadClientMods").requires(commandSource -> commandSource.hasPermissionLevel(4)).executes(context ->
         {
-            ModFileManager.reload();
+            ModFileManager.load();
             return Command.SINGLE_SUCCESS;
         }));
     }

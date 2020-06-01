@@ -1,20 +1,23 @@
 package io.github.ocelot.common.download;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.fml.DistExecutor;
-import org.apache.commons.codec.digest.DigestUtils;
+import net.minecraftforge.fml.ModList;
+import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nullable;
-import java.io.BufferedInputStream;
 import java.io.FileInputStream;
-import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -22,81 +25,83 @@ import java.util.stream.Collectors;
  */
 public class ModFileManager
 {
-    public static final String FOLDER_NAME = DistExecutor.runForDist(() -> () -> "mods", () -> () -> "client-mods");
-
     private static final Logger LOGGER = LogManager.getLogger();
-    private static final Map<String, String> HASHES = new HashMap<>();
+    private static final Map<String, ModFile> MOD_FILES = new HashMap<>();
 
-    private static void addHash(Path path) throws IOException
+    public static void load()
     {
-        try (BufferedInputStream bis = new BufferedInputStream(new FileInputStream(path.toString())))
-        {
-            HASHES.put(path.getFileName().toString(), DigestUtils.sha1Hex(bis));
-        }
-    }
+        MOD_FILES.clear();
 
-    public static void start()
-    {
-        try
+        DistExecutor.runWhenOn(Dist.CLIENT, () -> () -> ModList.get().getMods().forEach(modInfo -> MOD_FILES.put(modInfo.getModId(), new ModFile(modInfo))));
+        DistExecutor.runWhenOn(Dist.DEDICATED_SERVER, () -> () ->
         {
-            Path path = Paths.get(FOLDER_NAME);
-            Files.createDirectories(Files.exists(path) ? path.toRealPath() : path);
-
-            Files.list(path).forEach(childPath ->
+            try
             {
-                if (Files.isDirectory(childPath))
-                    return;
-
-                try
+                Path path = Paths.get("client-mods.json");
+                if (!Files.exists(path))
                 {
-                    addHash(childPath);
-                    LOGGER.debug("Loaded '" + childPath + "' client mod file.");
+                    LOGGER.info(path + " does not exist so it will not be loaded.");
+                    return;
+                }
+
+                try (FileInputStream inputStream = new FileInputStream(path.toString()))
+                {
+                    JsonArray json = new JsonParser().parse(IOUtils.toString(inputStream, StandardCharsets.UTF_8)).getAsJsonArray();
+                    Set<String> failedMods = new HashSet<>();
+                    for (int i = 0; i < json.size(); i++)
+                    {
+                        String modId = null;
+                        try
+                        {
+                            JsonObject modJson = json.get(i).getAsJsonObject();
+                            modId = modJson.get("modId").getAsString();
+                            if ((!modJson.has("clientOnly") || modJson.get("clientOnly").getAsBoolean()) && !ModList.get().isLoaded(modId))
+                            {
+                                LOGGER.warn(modId + " does not appear to be a valid or loaded mod. Skipping!");
+                                continue;
+                            }
+                            MOD_FILES.put(modId, new ModFile(modId, modJson.get("version").getAsString(), modJson.get("url").getAsString()));
+                        }
+                        catch (Exception e)
+                        {
+                            LOGGER.error(modId == null ? ("Failed to load mod at '" + i + "'") : "Failed to load mod '" + modId + "'", e);
+                            failedMods.add(modId == null ? ("Unknown " + i) : modId);
+                        }
+                    }
+                    LOGGER.debug("Loaded '" + MOD_FILES.size() + "' client mod(s)." + (failedMods.isEmpty() ? "" : failedMods.size() + " mod(s) failed to load."));
                 }
                 catch (Exception e)
                 {
-                    LOGGER.error("Failed to add hash for '" + childPath + "'", e);
+                    LOGGER.error("Failed to load '" + path + "'", e);
                 }
-            });
-        }
-        catch (Exception e)
-        {
-            LOGGER.error("Could not initialize mod file manager.", e);
-        }
+            }
+            catch (Exception e)
+            {
+                LOGGER.error("Could not initialize mod file manager.", e);
+            }
+        });
     }
 
-    public static Set<String> getMissingFiles(Set<Map.Entry<String, String>> others)
+    @OnlyIn(Dist.DEDICATED_SERVER)
+    public static Set<ModFile> getClientMissingFiles(Set<ModFile> clientFiles)
     {
-        return HASHES.entrySet().stream().filter(entry -> !others.contains(entry)).map(Map.Entry::getKey).collect(Collectors.toSet());
+        return MOD_FILES.values().stream().filter(serverFile -> !clientFiles.contains(serverFile)).collect(Collectors.toSet());
     }
 
-    public static Set<String> getAdditionalFiles(Set<Map.Entry<String, String>> others)
+    @OnlyIn(Dist.CLIENT)
+    public static Set<ModFile> getMissingFiles(Set<ModFile> serverFiles)
     {
-        return others.stream().filter(entry ->
-        {
-            String hash = getHash(entry.getKey());
-            return hash == null || !hash.equals(entry.getValue());
-        }).map(Map.Entry::getKey).collect(Collectors.toSet());
+        return serverFiles.stream().filter(serverFile -> !MOD_FILES.containsValue(serverFile)).collect(Collectors.toSet());
     }
 
     @Nullable
-    public static String getHash(String fileName)
+    public static ModFile getModFile(String modId)
     {
-        return HASHES.get(fileName);
+        return MOD_FILES.get(modId);
     }
 
-    public static Set<Map.Entry<String, String>> getFiles()
+    public static Collection<ModFile> getFiles()
     {
-        return HASHES.entrySet();
-    }
-
-    public static void stop()
-    {
-        HASHES.clear();
-    }
-
-    public static void reload()
-    {
-        stop();
-        start();
+        return MOD_FILES.values();
     }
 }

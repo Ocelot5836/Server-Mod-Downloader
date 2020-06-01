@@ -12,7 +12,7 @@ public class ClientInit
     @OnlyIn(Dist.CLIENT)
     public static void init(IEventBus bus)
     {
-        ModFileManager.start();
+        ModFileManager.load();
     }
 
     @OnlyIn(Dist.CLIENT)

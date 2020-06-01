@@ -57,12 +57,11 @@ public class ServerDownloader
         CommandDispatcher<CommandSource> dispatcher = event.getCommandDispatcher();
         ReloadClientModsCommand.register(dispatcher);
 
-        DistExecutor.runWhenOn(Dist.DEDICATED_SERVER, () -> ModFileManager::start);
+        DistExecutor.runWhenOn(Dist.DEDICATED_SERVER, () -> ModFileManager::load);
     }
 
     @SubscribeEvent
     public void onEvent(FMLServerStoppingEvent event)
     {
-        DistExecutor.runWhenOn(Dist.DEDICATED_SERVER, () -> ModFileManager::stop);
     }
 }

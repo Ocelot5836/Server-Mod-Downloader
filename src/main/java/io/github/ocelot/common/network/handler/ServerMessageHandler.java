@@ -1,16 +1,15 @@
 package io.github.ocelot.common.network.handler;
 
+import io.github.ocelot.common.download.ModFile;
 import io.github.ocelot.common.download.ModFileManager;
-import io.github.ocelot.common.init.ServerDownloaderMessages;
-import io.github.ocelot.common.network.*;
+import io.github.ocelot.common.network.NotifyFileStatusMessage;
+import io.github.ocelot.common.network.NotifyFileStatusResponseMessage;
 import net.minecraft.util.text.StringTextComponent;
 import net.minecraftforge.fml.network.NetworkEvent;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 /**
@@ -19,6 +18,8 @@ import java.util.function.Supplier;
 public class ServerMessageHandler implements MessageHandler
 {
     public static final MessageHandler INSTANCE = new ServerMessageHandler();
+
+    private static final Logger LOGGER = LogManager.getLogger();
 
     private ServerMessageHandler()
     {
@@ -33,95 +34,10 @@ public class ServerMessageHandler implements MessageHandler
     @Override
     public void handleNotifyFileStatusResponseMessage(NotifyFileStatusResponseMessage msg, Supplier<NetworkEvent.Context> ctx)
     {
-        Set<String> missingFiles = ModFileManager.getMissingFiles(msg.getFiles());
+        Set<ModFile> missingFiles = ModFileManager.getClientMissingFiles(msg.getClientFiles());
+        LOGGER.debug("Client returned mods '" + msg.getClientFiles() + "'." + (missingFiles.isEmpty() ? "" : " " + missingFiles.size() + " were missing and require download."));
         if (!missingFiles.isEmpty())
-        {
-            if (msg.isRequestingFiles())
-            {
-                Path path = Paths.get(ModFileManager.FOLDER_NAME);
-                AtomicInteger sendCount = new AtomicInteger();
-                missingFiles.forEach(fileName ->
-                {
-                    Path file = path.resolve(fileName);
-                    if (!Files.exists(file))
-                    {
-                        ServerDownloaderMessages.LOGIN.reply(new RequestFileResponseMessage(fileName, false), ctx.get());
-                        return;
-                    }
-                    ServerDownloaderMessages.LOGIN.reply(new RequestFileResponseMessage(fileName, true), ctx.get());
-                    FileChunkMessage.sendTo(4096, Paths.get(ModFileManager.FOLDER_NAME, fileName), () ->
-                    {
-                        if (sendCount.incrementAndGet() >= missingFiles.size())
-                        {
-                            ServerDownloaderMessages.LOGIN.reply(new DownloadCompletionMessage(), ctx.get());
-                            ctx.get().getNetworkManager().closeChannel(new StringTextComponent("Client needs to restart to apply files."));
-                        }
-                    }, ctx.get());
-                });
-            }
-            else
-            {
-                ctx.get().getNetworkManager().closeChannel(new StringTextComponent("Client refused to download files."));
-            }
-        }
+            ctx.get().getNetworkManager().closeChannel(new StringTextComponent("Client missing mods: " + missingFiles));
         ctx.get().setPacketHandled(true);
     }
-
-    @Override
-    public void handleRequestFileResponseMessage(RequestFileResponseMessage msg, Supplier<NetworkEvent.Context> ctx)
-    {
-        throw new UnsupportedOperationException("Server should not respond to file request.");
-    }
-
-    @Override
-    public void handleFileChunkMessage(FileChunkMessage msg, Supplier<NetworkEvent.Context> ctx)
-    {
-        throw new UnsupportedOperationException("Server should not receive file chunks.");
-    }
-
-    @Override
-    public void handleFileCompletionMessage(FileCompletionMessage msg, Supplier<NetworkEvent.Context> ctx)
-    {
-        throw new UnsupportedOperationException("Server should not receive file completion.");
-    }
-
-    @Override
-    public void handleDownloadCompletionMessage(DownloadCompletionMessage msg, Supplier<NetworkEvent.Context> ctx)
-    {
-        throw new UnsupportedOperationException("Server should not receive file completion.");
-    }
-
-//    @Override
-//    public void handleRequestFileMessage(RequestFileStatusMessage msg, Supplier<NetworkEvent.Context> ctx)
-//    {
-//        ctx.get().enqueueWork(() ->
-//        {
-//            String serverHash = ModFileManager.getHash(msg.getName());
-//            if (serverHash != null && serverHash.equals(msg.getHash()))
-//            {
-//                ServerDownloaderMessages.INSTANCE.reply(new RequestFileStatusResponseMessage(true), ctx.get());
-//                return;
-//            }
-//            ServerDownloaderMessages.INSTANCE.reply(new RequestFileStatusResponseMessage(false), ctx.get());
-//        });
-//        ctx.get().setPacketHandled(true);
-//    }
-//
-//    @Override
-//    public void handleRequestFileStatusResponseMessage(RequestFileStatusResponseMessage msg, Supplier<NetworkEvent.Context> ctx)
-//    {
-//        throw new IllegalArgumentException("Client should not send file request response to server.");
-//    }
-//
-//    @Override
-//    public void handleSendFileStatusMessage(SendFileStatusMessage msg, Supplier<NetworkEvent.Context> ctx)
-//    {
-//        throw new IllegalArgumentException("Client should not send file status to server.");
-//    }
-//
-//    @Override
-//    public void handleSendFileMessage(SendFileMessage msg, Supplier<NetworkEvent.Context> ctx)
-//    {
-//        throw new IllegalArgumentException("Client should not send files to server.");
-//    }
 }

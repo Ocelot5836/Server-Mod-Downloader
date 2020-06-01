@@ -14,14 +14,6 @@ public interface MessageHandler
 
     void handleNotifyFileStatusResponseMessage(NotifyFileStatusResponseMessage msg, Supplier<NetworkEvent.Context> ctx);
 
-    void handleRequestFileResponseMessage(RequestFileResponseMessage msg, Supplier<NetworkEvent.Context> ctx);
-
-    void handleFileChunkMessage(FileChunkMessage msg, Supplier<NetworkEvent.Context> ctx);
-
-    void handleFileCompletionMessage(FileCompletionMessage msg, Supplier<NetworkEvent.Context> ctx);
-
-    void handleDownloadCompletionMessage(DownloadCompletionMessage msg, Supplier<NetworkEvent.Context> ctx);
-
 //    @Deprecated
 //    void handleRequestFileMessage(RequestFileStatusMessage msg, Supplier<NetworkEvent.Context> ctx);
 //
