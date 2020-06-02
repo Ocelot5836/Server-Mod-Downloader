@@ -18,6 +18,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -92,19 +93,28 @@ public class DownloadModFilesScreen extends Screen
         {
             LOGGER.error("Failed to write '" + modFile.getModId() + "' to '" + fileLocation + "'", e);
         }
-        finally
-        {
-            IOUtils.closeQuietly(data);
-        }
 
-        this.getMinecraft().execute(() -> this.partialDownloadedFiles.remove(fileLocation));
-        this.getMinecraft().execute(() -> this.downloadedFiles++);
-        if (this.downloadingFiles.values().stream().allMatch(request -> request.isDownloaded() || request.isCancelled()))
+        this.getMinecraft().execute(() ->
         {
-            this.getMinecraft().execute(() -> this.getMinecraft().displayGuiScreen(this.cancelled ?
-                    new MainMenuScreen() :
-                    new DownloadModFilesCompleteScreen(this.startTime, System.nanoTime(), this.downloadedFiles)));
-        }
+            if (this.downloadingFiles.get(modFile).isCancelled())
+            {
+                try
+                {
+                    LOGGER.debug("Deleting partial download '" + fileLocation + "'");
+                    Files.deleteIfExists(fileLocation);
+                }
+                catch (IOException e)
+                {
+                    LOGGER.error("Failed to delete '" + fileLocation + "'", e);
+                }
+            }
+            this.partialDownloadedFiles.remove(fileLocation);
+            this.downloadedFiles++;
+            if (!this.cancelled && this.downloadingFiles.values().stream().allMatch(OnlineRequest.Request::isDownloaded))
+            {
+                this.getMinecraft().displayGuiScreen(new DownloadModFilesCompleteScreen(this.startTime, System.nanoTime(), this.downloadedFiles));
+            }
+        });
     }
 
     @Override
@@ -115,6 +125,7 @@ public class DownloadModFilesScreen extends Screen
             this.downloadingFiles.values().forEach(OnlineRequest.Request::cancel);
             this.cancelled = true;
             component.active = false;
+            this.getMinecraft().displayGuiScreen(new MainMenuScreen());
         }));
     }
 
@@ -164,6 +175,11 @@ public class DownloadModFilesScreen extends Screen
     public void removed()
     {
         // TODO delete all files if cancelled
+
+        if (this.downloadingFiles.values().stream().allMatch(OnlineRequest.Request::isDownloaded))
+        {
+            this.cancelled = true;
+        }
 
 //            LOGGER.debug("Deleting " + this.partialDownloadedFiles.size() + " partially downloaded files.");
 //            this.partialDownloadedFiles.forEach(path ->
