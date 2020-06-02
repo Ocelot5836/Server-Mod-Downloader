@@ -4,6 +4,7 @@ import net.minecraft.network.PacketBuffer;
 import net.minecraftforge.fml.loading.moddiscovery.ModInfo;
 
 import javax.annotation.Nullable;
+import java.util.Objects;
 
 /**
  * @author Ocelot
@@ -54,12 +55,25 @@ public class ModFile
     }
 
     @Override
+    public boolean equals(Object o)
+    {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ModFile modFile = (ModFile) o;
+        return modId.equals(modFile.modId) &&
+                version.equals(modFile.version);
+    }
+
+    @Override
+    public int hashCode()
+    {
+        return Objects.hash(modId, version);
+    }
+
+    @Override
     public String toString()
     {
-        return "ModFile{" +
-                "modId='" + this.modId + '\'' +
-                ", version='" + this.version + '\'' +
-                '}';
+        return "ModFile{" + this.modId + " v" + this.version + ", URL: " + this.url + "}";
     }
 
     public static ModFile deserialize(PacketBuffer buf)

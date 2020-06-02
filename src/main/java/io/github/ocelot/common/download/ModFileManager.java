@@ -68,7 +68,7 @@ public class ModFileManager
                             failedMods.add(modId == null ? ("Unknown " + i) : modId);
                         }
                     }
-                    LOGGER.debug("Loaded '" + MOD_FILES.size() + "' client mod(s)." + (failedMods.isEmpty() ? "" : failedMods.size() + " mod(s) failed to load."));
+                    LOGGER.debug("Loaded " + MOD_FILES.size() + " client mod(s)." + (failedMods.isEmpty() ? "" : failedMods.size() + " mod(s) failed to load."));
                 }
                 catch (Exception e)
                 {

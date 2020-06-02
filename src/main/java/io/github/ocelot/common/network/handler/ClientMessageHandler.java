@@ -1,6 +1,6 @@
 package io.github.ocelot.common.network.handler;
 
-import io.github.ocelot.client.screen.DownloadModFilesScreen;
+import io.github.ocelot.client.screen.DownloadModFilesConfirmationScreen;
 import io.github.ocelot.common.download.ModFile;
 import io.github.ocelot.common.download.ModFileManager;
 import io.github.ocelot.common.init.ServerDownloaderMessages;
@@ -29,7 +29,7 @@ public class ClientMessageHandler implements MessageHandler
         Set<ModFile> missingFiles = ModFileManager.getMissingFiles(msg.getServerFiles());
         ServerDownloaderMessages.LOGIN.reply(new NotifyFileStatusResponseMessage(), ctx.get());
         if (!missingFiles.isEmpty())
-            Minecraft.getInstance().displayGuiScreen(new DownloadModFilesScreen(Minecraft.getInstance().currentScreen, missingFiles));
+            Minecraft.getInstance().displayGuiScreen(new DownloadModFilesConfirmationScreen(missingFiles));
         ctx.get().setPacketHandled(true);
     }
 

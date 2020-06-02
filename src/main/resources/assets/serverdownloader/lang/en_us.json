@@ -1,5 +1,11 @@
 {
   "language.name": "English",
   "language.region": "United States",
-  "language.code": "en_us"
+  "language.code": "en_us",
+
+  "screen.serverdownloader.confirm_download": "%s mod(s) need to be downloaded to join the server",
+  "screen.serverdownloader.download": "Downloading Files...",
+  "screen.serverdownloader.download.count": "Downloaded %s/%s Files",
+  "button.serverdownloader.download": "Download",
+  "button.serverdownloader.restart": "Restart Game"
 }
