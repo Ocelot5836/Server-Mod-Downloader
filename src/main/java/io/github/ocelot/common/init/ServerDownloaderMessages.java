@@ -1,7 +1,9 @@
 package io.github.ocelot.common.init;
 
 import io.github.ocelot.ServerDownloader;
-import io.github.ocelot.common.network.*;
+import io.github.ocelot.common.network.LoginMessage;
+import io.github.ocelot.common.network.NotifyFileStatusMessage;
+import io.github.ocelot.common.network.NotifyFileStatusResponseMessage;
 import io.github.ocelot.common.network.handler.ClientMessageHandler;
 import io.github.ocelot.common.network.handler.MessageHandler;
 import io.github.ocelot.common.network.handler.ServerMessageHandler;
@@ -11,7 +13,6 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.network.FMLHandshakeHandler;
 import net.minecraftforge.fml.network.NetworkDirection;
 import net.minecraftforge.fml.network.NetworkEvent;
-import net.minecraftforge.fml.network.NetworkRegistry;
 import net.minecraftforge.fml.network.simple.SimpleChannel;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -29,10 +30,7 @@ public class ServerDownloaderMessages
     public static final ResourceLocation LOGIN_RESOURCE = new ResourceLocation(ServerDownloader.MOD_ID, "login");
 
     public static final String VERSION = "1.0";
-    public static final SimpleChannel LOGIN = NetworkRegistry.newSimpleChannel(LOGIN_RESOURCE, () -> VERSION, s -> true, s -> true);
-
-    @Deprecated
-    public static final SimpleChannel INSTANCE = NetworkRegistry.newSimpleChannel(new ResourceLocation(ServerDownloader.MOD_ID, "play"), () -> VERSION, s -> true, s -> true);
+    public static final SimpleChannel LOGIN = net.minecraftforge.fml.network.NetworkRegistry.newSimpleChannel(LOGIN_RESOURCE, () -> VERSION, s -> true, s -> true);
 
     private static int index;
 
