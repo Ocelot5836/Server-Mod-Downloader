@@ -27,7 +27,6 @@ public class DownloadModFilesConfirmationScreen extends Screen
     @Override
     protected void init()
     {
-        System.out.println("Missing " + this.missingFiles);
         this.addButton(new Button(this.width / 2 - 100, (this.height - 24) / 2, 200, 20, I18n.format("menu.quit"), component -> this.getMinecraft().displayGuiScreen(new DownloadModFilesScreen(this.missingFiles))));
         this.addButton(new Button(this.width / 2 - 100, (this.height + 24) / 2, 200, 20, I18n.format("gui.toTitle"), component -> this.getMinecraft().displayGuiScreen(new MainMenuScreen())));
     }
