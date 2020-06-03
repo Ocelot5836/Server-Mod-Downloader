@@ -17,7 +17,7 @@ public class DownloadModFilesCompleteScreen extends Screen
 {
     public DownloadModFilesCompleteScreen(long startTime, long endTime, int downloadedFiles)
     {
-        super(new TranslationTextComponent("screen." + ServerDownloader.MOD_ID + ".complete_download", downloadedFiles, DownloadModFilesScreen.DECIMAL_FORMAT.format(TimeUtils.abbreviateLargestUnit(endTime - startTime, TimeUnit.NANOSECONDS)) + TimeUtils.abbreviate(TimeUtils.getLargestUnit(endTime - startTime, TimeUnit.NANOSECONDS)) + " elapsed"));
+        super(new TranslationTextComponent("screen." + ServerDownloader.MOD_ID + ".complete_download", downloadedFiles, DownloadModFilesScreen.DECIMAL_FORMAT.format(TimeUtils.abbreviateLargestUnit(endTime - startTime, TimeUnit.NANOSECONDS)) + TimeUtils.abbreviate(TimeUtils.getLargestUnit(endTime - startTime, TimeUnit.NANOSECONDS))));
     }
 
     @Override

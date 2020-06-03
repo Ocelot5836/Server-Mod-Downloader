@@ -28,7 +28,7 @@ displayName="Mod Downloader" #mandatory
 # A text field displayed in the mod UI
 authors="Ocelot5836" #optional
 # The description text for the mod (multi line!) (#mandatory)
-description="Downloads mod files from the server and adds them to the client."
+description="Downloads mod files from the server and adds them to the client. The game must be restarted after files have been downloaded."
 # A dependency - use the . to indicate dependency for a specific modid. Dependencies are optional.
 [[dependencies.serverdownloader]] #optional
     # the modid of the dependency

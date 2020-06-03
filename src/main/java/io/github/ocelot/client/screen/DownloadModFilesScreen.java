@@ -25,7 +25,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -44,7 +47,6 @@ public class DownloadModFilesScreen extends Screen
     }
 
     private final Map<ModFile, OnlineRequest.Request> downloadingFiles;
-    private final Set<Path> partialDownloadedFiles;
     private final long startTime;
     private int downloadedFiles;
     private boolean cancelled;
@@ -53,7 +55,6 @@ public class DownloadModFilesScreen extends Screen
     {
         super(new TranslationTextComponent("screen." + ServerDownloader.MOD_ID + ".download", missingFiles.size()));
         this.downloadingFiles = new HashMap<>();
-        this.partialDownloadedFiles = new HashSet<>();
         this.startTime = System.nanoTime();
         this.downloadedFiles = 0;
         this.cancelled = false;
@@ -61,22 +62,18 @@ public class DownloadModFilesScreen extends Screen
         {
             if (StringUtils.isNullOrEmpty(modFile.getUrl()))
                 return;
-            this.downloadingFiles.put(modFile, OnlineRequest.make(modFile.getUrl(), data -> this.writeToFile(modFile, data), t -> LOGGER.error("Failed to download mod file for '" + modFile + "' from '" + modFile.getUrl() + "'", t)));
+            this.downloadingFiles.put(modFile, OnlineRequest.make(modFile.getUrl(), data -> this.writeToFile(modFile, data), t ->
+            {
+                LOGGER.error("Failed to download mod file for '" + modFile + "' from '" + modFile.getUrl() + "'", t);
+                this.downloadedFiles++;
+            }));
         });
     }
 
     private void writeToFile(ModFile modFile, InputStream data)
     {
-        String fileName = FilenameUtils.getName(modFile.getUrl());
-        if (fileName == null)
-        {
-            LOGGER.warn("Mod file '" + modFile.getModId() + "' had an invalid file name! Using default.");
-            fileName = modFile.getModId() + "-" + modFile.getVersion() + ".jar";
-        }
-
         Path downloadFolder = Paths.get(this.getMinecraft().gameDir.getAbsolutePath(), ServerDownloader.MOD_ID + "-mod-downloads");
-        Path fileLocation = downloadFolder.resolve(fileName);
-        this.partialDownloadedFiles.add(fileLocation);
+        Path fileLocation = downloadFolder.resolve(modFile.getModId() + "." + FilenameUtils.getExtension(modFile.getUrl()));
 
         try
         {
@@ -108,7 +105,6 @@ public class DownloadModFilesScreen extends Screen
                     LOGGER.error("Failed to delete '" + fileLocation + "'", e);
                 }
             }
-            this.partialDownloadedFiles.remove(fileLocation);
             this.downloadedFiles++;
             if (!this.cancelled && this.downloadingFiles.values().stream().allMatch(OnlineRequest.Request::isDownloaded))
             {
@@ -120,7 +116,7 @@ public class DownloadModFilesScreen extends Screen
     @Override
     protected void init()
     {
-        this.addButton(new Button(this.width / 2 - 100, (this.height + 24) / 2, 200, 20, I18n.format("gui.cancel"), component ->
+        this.addButton(new Button(this.width / 2 - 100, (this.height - 24) - this.height / 8, 200, 20, I18n.format("gui.cancel"), component ->
         {
             this.downloadingFiles.values().forEach(OnlineRequest.Request::cancel);
             this.cancelled = true;
@@ -136,8 +132,8 @@ public class DownloadModFilesScreen extends Screen
 
         long now = System.nanoTime();
         this.drawCenteredString(this.font, this.title.getFormattedText(), this.width / 2, this.height / 8, 11184810);
-        this.drawCenteredString(this.font, DECIMAL_FORMAT.format(TimeUtils.abbreviateLargestUnit(now - this.startTime, TimeUnit.NANOSECONDS)) + TimeUtils.abbreviate(TimeUtils.getLargestUnit(now - this.startTime, TimeUnit.NANOSECONDS)) + " elapsed", this.width / 2, (this.height + 24) / 2 + 26, 11184810);
-        this.drawCenteredString(this.font, I18n.format("screen.serverdownloader.download.count", this.downloadedFiles, this.downloadingFiles.size()), this.width / 2, (this.height + 24) / 2 + 30 + this.font.FONT_HEIGHT, 11184810);
+        this.drawCenteredString(this.font, DECIMAL_FORMAT.format(TimeUtils.abbreviateLargestUnit(now - this.startTime, TimeUnit.NANOSECONDS)) + TimeUtils.abbreviate(TimeUtils.getLargestUnit(now - this.startTime, TimeUnit.NANOSECONDS)) + " elapsed", this.width / 2, (this.height - 24) - this.height / 8 + 26, 11184810);
+        this.drawCenteredString(this.font, I18n.format("screen.serverdownloader.download.count", this.downloadedFiles, this.downloadingFiles.size()), this.width / 2, (this.height - 24) - this.height / 8 + 30 + this.font.FONT_HEIGHT, 11184810);
 
         Map.Entry<ModFile, OnlineRequest.Request> hoveredEntry = null;
         int i = 0;
@@ -145,7 +141,7 @@ public class DownloadModFilesScreen extends Screen
         {
             ModFile mod = entry.getKey();
             OnlineRequest.Request request = entry.getValue();
-            if (!request.isDownloaded())
+            if (request.getBytesReceived() > 0 && !request.isDownloaded())
             {
                 this.font.drawString(mod.getModId(), (this.width - 182) / 2f - this.font.getStringWidth(mod.getModId()) - 4, this.height / 8f + ((2 + i) * this.font.FONT_HEIGHT), 11184810);
 

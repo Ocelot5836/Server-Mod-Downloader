@@ -6,6 +6,7 @@
   "screen.serverdownloader.confirm_download": "%s mod(s) need to be downloaded to join the server",
   "screen.serverdownloader.download": "Downloading Files...",
   "screen.serverdownloader.download.count": "Downloaded %s/%s Files",
+  "screen.serverdownloader.complete_download": "Downloaded %s Files in %s",
   "button.serverdownloader.download": "Download",
   "button.serverdownloader.restart": "Restart Game"
 }

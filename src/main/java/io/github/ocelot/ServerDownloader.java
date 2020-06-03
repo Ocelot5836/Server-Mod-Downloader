@@ -2,9 +2,10 @@ package io.github.ocelot;
 
 import com.mojang.brigadier.CommandDispatcher;
 import io.github.ocelot.client.init.ClientInit;
+import io.github.ocelot.common.download.ModFileManager;
 import io.github.ocelot.common.init.ServerDownloaderMessages;
 import io.github.ocelot.server.command.ReloadClientModsCommand;
-import io.github.ocelot.common.download.ModFileManager;
+import net.minecraft.client.Minecraft;
 import net.minecraft.command.CommandSource;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
@@ -19,6 +20,10 @@ import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 

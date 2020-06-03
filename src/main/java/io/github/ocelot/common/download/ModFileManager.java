@@ -2,6 +2,7 @@ package io.github.ocelot.common.download;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
@@ -55,11 +56,11 @@ public class ModFileManager
                         {
                             JsonObject modJson = json.get(i).getAsJsonObject();
                             modId = modJson.get("modId").getAsString();
+                            if (MOD_FILES.containsKey(modId))
+                                throw new JsonParseException("Duplicate mod '" + modId + "'. Skipping!");
                             if (!(modJson.has("clientOnly") && modJson.get("clientOnly").getAsBoolean()) && !ModList.get().isLoaded(modId))
-                            {
-                                LOGGER.warn(modId + " does not appear to be a valid or loaded mod. Skipping!");
-                                continue;
-                            }
+                                throw new JsonParseException(modId + " does not appear to be a valid or loaded mod. Skipping!");
+
                             MOD_FILES.put(modId, new ModFile(modId, modJson.get("version").getAsString(), modJson.get("url").getAsString()));
                         }
                         catch (Exception e)
@@ -85,13 +86,13 @@ public class ModFileManager
     @OnlyIn(Dist.DEDICATED_SERVER)
     public static Set<ModFile> getClientMissingFiles(Set<ModFile> clientFiles)
     {
-        return MOD_FILES.values().stream().filter(serverFile -> !clientFiles.contains(serverFile)).collect(Collectors.toSet());
+        return MOD_FILES.values().stream().filter(serverFile -> !clientFiles.contains(serverFile) || !MOD_FILES.get(serverFile.getModId()).getVersion().equals(serverFile.getVersion())).collect(Collectors.toSet());
     }
 
     @OnlyIn(Dist.CLIENT)
     public static Set<ModFile> getMissingFiles(Set<ModFile> serverFiles)
     {
-        return serverFiles.stream().filter(serverFile -> !MOD_FILES.containsValue(serverFile)).collect(Collectors.toSet());
+        return serverFiles.stream().filter(serverFile -> !MOD_FILES.containsValue(serverFile) || !MOD_FILES.get(serverFile.getModId()).getVersion().equals(serverFile.getVersion())).collect(Collectors.toSet());
     }
 
     @Nullable
