@@ -7,6 +7,8 @@ import java.util.Arrays;
 import java.util.Objects;
 
 /**
+ * <p>A file that can be downloaded from the server.</p>
+ *
  * @author Ocelot
  */
 public class DownloadableModFile
@@ -25,11 +27,25 @@ public class DownloadableModFile
         this.hash = hash;
     }
 
+    /**
+     * @return The mods in the file
+     */
     public String[] getModIds()
     {
         return modIds;
     }
 
+    /**
+     * @return A visual representation of the mods in the file
+     */
+    public String getVisualMods()
+    {
+        return String.join(", ", this.modIds);
+    }
+
+    /**
+     * @return The SHA1 hash of the file on the server
+     */
     public String getHash()
     {
         return hash;
@@ -55,6 +71,6 @@ public class DownloadableModFile
     @Override
     public String toString()
     {
-        return "ModFile{Mods: " + Arrays.toString(this.modIds) + ", Hash: " + this.hash + "}";
+        return "ModFile{Mods: " + this.getVisualMods() + ", Hash: " + this.hash + "}";
     }
 }

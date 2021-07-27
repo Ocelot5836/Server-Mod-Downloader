@@ -8,6 +8,7 @@ import io.github.ocelot.client.download.ClientDownloadManager;
 import io.github.ocelot.common.UnitHelper;
 import io.github.ocelot.common.download.DownloadableModFile;
 import io.github.ocelot.sonar.client.render.ShapeRenderer;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.toasts.SystemToast;
 import net.minecraft.client.gui.screens.Screen;
@@ -35,6 +36,8 @@ public class DownloadModFilesScreen extends Screen
     private int downloadedFiles;
     private boolean cancelled;
 
+    private Button cancelButton;
+
     public DownloadModFilesScreen(String httpServer, Set<DownloadableModFile> missingFiles)
     {
         super(new TranslatableComponent("screen." + ServerDownloader.MOD_ID + ".download", missingFiles.size()));
@@ -45,9 +48,9 @@ public class DownloadModFilesScreen extends Screen
         missingFiles.forEach(modFile -> this.downloadingFiles.put(modFile, ClientDownloadManager.download(modFile, httpServer + "/download?mod=" + modFile.getModIds()[0], download -> this.getMinecraft().execute(() ->
         {
             this.downloadedFiles++;
-            if (!this.cancelled && this.downloadingFiles.values().stream().allMatch(future -> future.isDone() && future.join().isCompleted() && !future.join().isFailed()))
+            if (!this.cancelled && this.downloadingFiles.values().stream().allMatch(future -> future.isDone() && future.join().isDone() && !future.join().hasFailed()))
             {
-                this.getMinecraft().setScreen(new DownloadModFilesCompleteScreen(this.startTime, System.currentTimeMillis(), this.downloadedFiles));
+                Minecraft.getInstance().execute(() -> Minecraft.getInstance().setScreen(new DownloadModFilesCompleteScreen(this.startTime, System.currentTimeMillis(), this.downloadedFiles)));
             }
         })).handleAsync((download, exception) ->
         {
@@ -55,23 +58,29 @@ public class DownloadModFilesScreen extends Screen
             {
                 exception.printStackTrace();
                 this.cancel();
-                SystemToast.onPackCopyFailure(this.getMinecraft(), exception.getMessage());
+                SystemToast.onPackCopyFailure(Minecraft.getInstance(), exception.getMessage());
             }
             return download;
-        })));
+        }, Minecraft.getInstance())));
     }
 
     private void cancel()
     {
-        this.downloadingFiles.values().forEach(file -> file.thenAcceptAsync(ClientDownload::cancel, HttpUtil.DOWNLOAD_EXECUTOR));
+        this.downloadingFiles.values().forEach(file -> file.thenAcceptAsync(download -> download.cancel(true), HttpUtil.DOWNLOAD_EXECUTOR));
         this.cancelled = true;
-        this.getMinecraft().setScreen(new TitleScreen());
+        this.cancelButton.active = false;
+        CompletableFuture.allOf(this.downloadingFiles.values().stream().map(future -> future.thenCompose(ClientDownload::getCompletionFuture)).toArray(CompletableFuture[]::new)).exceptionally(e ->
+        {
+            if (e != null)
+                e.printStackTrace();
+            return null;
+        }).thenRunAsync(() -> this.getMinecraft().setScreen(new TitleScreen()), this.getMinecraft());
     }
 
     @Override
     protected void init()
     {
-        this.addButton(new Button(this.width / 2 - 100, (this.height - 24) - this.height / 8, 200, 20, new TranslatableComponent("gui.cancel"), component -> this.cancel()));
+        this.addButton(this.cancelButton = new Button(this.width / 2 - 100, (this.height - 24) - this.height / 8, 200, 20, new TranslatableComponent("gui.cancel"), component -> this.cancel()));
     }
 
     @Override
@@ -93,7 +102,7 @@ public class DownloadModFilesScreen extends Screen
         {
             DownloadableModFile mod = entry.getKey();
             CompletableFuture<ClientDownload> future = entry.getValue();
-            if (future.isDone() && future.join().getBytesDownloaded() > 0 && !future.join().isCompleted())
+            if (future.isDone() && future.join().getBytesDownloaded() > 0 && !future.join().isDone())
             {
                 String ids = String.join(", ", mod.getModIds());
                 this.font.draw(matrixStack, ids, (this.width - 182) / 2f - this.font.width(ids) - 4, Mth.fastFloor(this.height / 8F) + ((2 + i) * this.font.lineHeight), 11184810);

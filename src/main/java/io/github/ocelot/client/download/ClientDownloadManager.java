@@ -2,7 +2,6 @@ package io.github.ocelot.client.download;
 
 import com.google.common.collect.Iterables;
 import com.mojang.datafixers.util.Pair;
-import io.github.ocelot.ServerDownloader;
 import io.github.ocelot.common.UnitHelper;
 import io.github.ocelot.common.download.DownloadableModFile;
 import net.minecraft.SharedConstants;
@@ -10,8 +9,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.util.HttpUtil;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.loading.FMLLoader;
-import net.minecraftforge.fml.loading.moddiscovery.ModFileInfo;
+import net.minecraftforge.fml.loading.FMLPaths;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.http.*;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -19,7 +19,6 @@ import org.apache.http.conn.EofSensorInputStream;
 import org.apache.http.conn.EofSensorWatcher;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
-import org.apache.http.protocol.HttpContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -31,8 +30,11 @@ import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.file.*;
+import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -41,9 +43,9 @@ import java.util.function.Consumer;
 public class ClientDownloadManager
 {
     private static final Logger LOGGER = LogManager.getLogger();
-    private static final Path MODS_FOLDER = Paths.get(Minecraft.getInstance().gameDirectory.toURI()).resolve("mods");
-    private static final Path CACHE_FOLDER = Paths.get(Minecraft.getInstance().gameDirectory.toURI()).resolve(ServerDownloader.MOD_ID + "-cache");
-    private static final long MAX_DOWNLOAD = 1024 * 1024 * 100; // 100 MB TODO make this a config
+    private static final Path CACHE_FOLDER = Paths.get(Minecraft.getInstance().gameDirectory.toURI()).resolve("server-mods");
+    private static final long MAX_DOWNLOAD = 100 * 1024 * 1024; // 100 MB TODO make this a config
+    private static final int DOWNLOAD_BUFFER_SIZE = 4096; // 4 KB TODO make this a config
 
     private static final Map<String, Pair<Path, Path>> REPLACED_MODS = new ConcurrentHashMap<>();
     private static final Set<Path> REMOVED_MODS = ConcurrentHashMap.newKeySet();
@@ -155,15 +157,18 @@ public class ClientDownloadManager
     {
         return CompletableFuture.supplyAsync(() ->
         {
+            InputStream stream = null;
             try
             {
                 Pair<HttpResponse, InputStream> pair = getStream(url);
+                HttpResponse response = pair.getFirst();
+                stream = pair.getSecond();
 
-                long fileSize = pair.getFirst().getFirstHeader("Content-Length") != null ? Long.parseLong(pair.getFirst().getFirstHeader("Content-Length").getValue()) : -1;
+                long fileSize = response.getFirstHeader("Content-Length") != null ? Long.parseLong(response.getFirstHeader("Content-Length").getValue()) : -1;
                 if (fileSize > MAX_DOWNLOAD)
-                    throw new IOException("Download for " + String.join(", ", modFile.getModIds()) + " is too large. Max Size: " + UnitHelper.abbreviateSize(MAX_DOWNLOAD) + ", Download Size: " + UnitHelper.abbreviateSize(fileSize));
+                    throw new IOException("Download for " + modFile.getVisualMods() + " is too large. Max Size: " + UnitHelper.abbreviateSize(MAX_DOWNLOAD) + ", Download Size: " + UnitHelper.abbreviateSize(fileSize));
 
-                Path location = CACHE_FOLDER.resolve(getFileName(modFile.getModIds(), pair.getFirst()));
+                Path location = CACHE_FOLDER.resolve(getFileName(modFile.getModIds(), response));
 
                 if (location.getParent() != null && !Files.exists(location.getParent()))
                     Files.createDirectories(location.getParent());
@@ -173,13 +178,16 @@ public class ClientDownloadManager
                 }
                 else
                 {
-                    try (InputStream stream = new FileInputStream(location.toFile()))
+                    // Attempt to check if the file is already a full download
+                    try (InputStream s = new FileInputStream(location.toFile()))
                     {
-                        if (DigestUtils.sha1Hex(stream).equals(modFile.getHash()))
+                        if (DigestUtils.sha1Hex(s).equals(modFile.getHash()))
                         {
+                            // If it is, then skip downloading and move on
                             LOGGER.info("Skipped downloading file: " + location);
+                            IOUtils.closeQuietly(pair.getSecond());
                             ClientDownload download = new ClientDownload(url, fileSize, location);
-                            download.setStatus(ClientDownload.Status.SUCCESS);
+                            download.completeSuccessfully();
                             completeListener.accept(download);
                             return download;
                         }
@@ -190,91 +198,98 @@ public class ClientDownloadManager
                 }
 
                 ClientDownload download = new ClientDownload(url, fileSize, location);
+                // Perform the download
                 CompletableFuture.runAsync(() ->
                 {
                     LOGGER.info("Started downloading file: " + location);
-                    try (ReadableByteChannel in = Channels.newChannel(pair.getSecond()); FileChannel channel = FileChannel.open(location, StandardOpenOption.WRITE))
+                    try (ReadableByteChannel in = Channels.newChannel(pair.getSecond()); FileChannel out = FileChannel.open(location, StandardOpenOption.WRITE))
                     {
                         int readAmount;
-                        ByteBuffer buffer = ByteBuffer.allocate(4096);
+                        ByteBuffer buffer = ByteBuffer.allocate(DOWNLOAD_BUFFER_SIZE);
                         while ((readAmount = in.read(buffer)) != -1)
                         {
                             if (!FMLLoader.isProduction()) // Debug only
                                 Thread.sleep(50);
 
                             if (download.isCancelled())
-                                throw new IOException("Download cancelled");
+                                throw new CancellationException("Download cancelled");
 
                             download.addBytesDownloaded(readAmount);
                             if (download.getBytesDownloaded() > MAX_DOWNLOAD)
-                                throw new IOException("Download for " + String.join(", ", modFile.getModIds()) + " is too large. Max Size: " + UnitHelper.abbreviateSize(MAX_DOWNLOAD));
+                                throw new IOException("Download for " + modFile.getVisualMods() + " is too large. Max Size: " + UnitHelper.abbreviateSize(MAX_DOWNLOAD));
 
                             buffer.flip();
-                            channel.write(buffer);
+                            out.write(buffer);
                             buffer.clear();
                         }
 
-                        download.setStatus(ClientDownload.Status.SUCCESS);
+                        download.completeSuccessfully();
                         completeListener.accept(download);
 
-                        ModFileInfo modFileInfo = ModList.get().getModFileById(modFile.getModIds()[0]);
-                        REPLACED_MODS.put(String.join(", ", modFile.getModIds()), Pair.of(location, MODS_FOLDER.resolve(getFileName(modFile.getModIds(), pair.getFirst())).toAbsolutePath()));
-                        if (modFileInfo != null)
-                            REMOVED_MODS.add(modFileInfo.getFile().getFilePath());
+                        REPLACED_MODS.put(modFile.getVisualMods(), Pair.of(location, FMLPaths.MODSDIR.get().resolve(getFileName(modFile.getModIds(), response)).toAbsolutePath()));
+                        // Delete all mod files associated with the files the new mods have
+                        Arrays.stream(modFile.getModIds()).map(modId -> ModList.get().getModFileById(modId)).filter(Objects::nonNull).distinct().forEach(modFileInfo -> REMOVED_MODS.add(modFileInfo.getFile().getFilePath()));
+                    }
+                    catch (CancellationException e)
+                    {
+                        LOGGER.info("Cancelling download for mod file: " + modFile.getVisualMods());
+                        deleteFile(location);
+                        download.completeCancelled();
+                        completeListener.accept(download);
                     }
                     catch (Exception e)
                     {
-                        download.setStatus(ClientDownload.Status.FAILED);
-                        completeListener.accept(download);
-
-                        try
-                        {
-                            Files.delete(location);
-                        }
-                        catch (IOException e1)
-                        {
-                            LOGGER.error("Failed to delete file: " + location, e1);
-                        }
-
-                        throw new CompletionException("Failed to download mod file: " + String.join(", ", modFile.getModIds()), e);
+                        deleteFile(location);
+                        throw new CompletionException("Failed to download mod file: " + modFile.getVisualMods(), e);
                     }
                 }, HttpUtil.DOWNLOAD_EXECUTOR).exceptionally(e ->
                 {
                     if (e != null)
+                    {
                         e.printStackTrace();
+                        download.completeExceptionally(e);
+                        completeListener.accept(download);
+                    }
                     return null;
                 });
                 return download;
             }
             catch (Exception e)
             {
-                throw new CompletionException("Failed to request mod file: " + String.join(", ", modFile.getModIds()), e);
+                IOUtils.closeQuietly(stream);
+                throw new CompletionException("Failed to request mod file: " + modFile.getVisualMods(), e);
             }
         }, HttpUtil.DOWNLOAD_EXECUTOR);
+    }
+
+    private static void deleteFile(Path location)
+    {
+        try
+        {
+            Files.delete(location);
+        }
+        catch (IOException e1)
+        {
+            LOGGER.error("Failed to delete file: " + location, e1);
+        }
     }
 
     private static Pair<HttpResponse, InputStream> getStream(String url) throws IOException
     {
         HttpGet get = new HttpGet(url);
-        CloseableHttpClient client = HttpClients.custom().setUserAgent("Minecraft Java/" + SharedConstants.getCurrentVersion().getName()).addInterceptorFirst(new HttpRequestInterceptor()
+        CloseableHttpClient client = HttpClients.custom().setUserAgent("Minecraft Java/" + SharedConstants.getCurrentVersion().getName()).addInterceptorFirst((HttpRequestInterceptor) (request, context) ->
         {
-            @Override
-            public void process(HttpRequest request, HttpContext context)
-            {
-                request.setHeader("X-Minecraft-Username", Minecraft.getInstance().getUser().getName());
-                request.setHeader("X-Minecraft-UUID", Minecraft.getInstance().getUser().getUuid());
-                request.setHeader("X-Minecraft-Version", SharedConstants.getCurrentVersion().getName());
-                request.setHeader("X-Minecraft-Version-ID", SharedConstants.getCurrentVersion().getId());
-                request.setHeader("X-Minecraft-Pack-Format", String.valueOf(SharedConstants.getCurrentVersion().getPackVersion()));
-            }
+            request.setHeader("X-Minecraft-Username", Minecraft.getInstance().getUser().getName());
+            request.setHeader("X-Minecraft-UUID", Minecraft.getInstance().getUser().getUuid());
+            request.setHeader("X-Minecraft-Version", SharedConstants.getCurrentVersion().getName());
+            request.setHeader("X-Minecraft-Version-ID", SharedConstants.getCurrentVersion().getId());
         }).build();
 
         CloseableHttpResponse response = client.execute(get);
         StatusLine statusLine = response.getStatusLine();
         if (statusLine.getStatusCode() != 200)
         {
-            client.close();
-            response.close();
+            IOUtils.closeQuietly(client, response);
             throw new IOException("Failed to connect to '" + url + "'. " + statusLine.getStatusCode() + " " + statusLine.getReasonPhrase());
         }
         return Pair.of(response, new EofSensorInputStream(response.getEntity().getContent(), new EofSensorWatcher()
@@ -282,21 +297,24 @@ public class ClientDownloadManager
             @Override
             public boolean eofDetected(InputStream wrapped) throws IOException
             {
-                response.close();
+                IOUtils.closeQuietly(response);
+                client.close();
                 return true;
             }
 
             @Override
             public boolean streamClosed(InputStream wrapped) throws IOException
             {
-                response.close();
+                IOUtils.closeQuietly(response);
+                client.close();
                 return true;
             }
 
             @Override
             public boolean streamAbort(InputStream wrapped) throws IOException
             {
-                response.close();
+                IOUtils.closeQuietly(response);
+                client.close();
                 return true;
             }
         }));

@@ -105,9 +105,6 @@ public class ServerHttpHandler extends SimpleChannelInboundHandler<Object>
                     }
                     case "resources.zip":
                     {
-                        if (!this.isOnline(ctx.channel().remoteAddress(), request.headers()))
-                            break;
-
                         String resourcePack = this.cache.runServerTask(MinecraftServer::getResourcePack).join();
                         if (resourcePack != null && resourcePack.startsWith("level://"))
                         {
@@ -127,42 +124,42 @@ public class ServerHttpHandler extends SimpleChannelInboundHandler<Object>
         }
     }
 
-    private boolean isOnline(SocketAddress address, HttpHeaders headers)
-    {
-        if (!headers.contains("X-Minecraft-Username") || !headers.contains("X-Minecraft-UUID"))
-            return false;
-
-        try
-        {
-            String username = headers.get("X-Minecraft-Username");
-            UUID id = UUID.fromString(headers.get("X-Minecraft-UUID"));
-            return this.cache.runServerTask(server ->
-            {
-                ServerPlayer player = server.getPlayerList().getPlayer(id);
-                if (player == null || !player.getGameProfile().getName().equals(username)) // It must be an actual player online
-                    return false;
-
-                if (address instanceof InetSocketAddress) // Make sure they are coming from the same machine
-                {
-                    String ip = ((InetSocketAddress) address).getAddress().getHostAddress();
-                    if (!player.getIpAddress().equals(ip))
-                        LOGGER.warn("Player: " + player + " with ip: " + player.getIpAddress() + " attempted to connect to the HTTP server from " + ip);
-                    return player.getIpAddress().equals(ip);
-                }
-                return true;
-            }).exceptionally(e ->
-            {
-                if (e != null)
-                    e.printStackTrace();
-                return false;
-            }).join();
-        }
-        catch (Exception e)
-        {
-            e.printStackTrace();
-            return false;
-        }
-    }
+//    private boolean isOnline(SocketAddress address, HttpHeaders headers)
+//    {
+//        if (!headers.contains("X-Minecraft-Username") || !headers.contains("X-Minecraft-UUID"))
+//            return false;
+//
+//        try
+//        {
+//            String username = headers.get("X-Minecraft-Username");
+//            UUID id = UUID.fromString(headers.get("X-Minecraft-UUID"));
+//            return this.cache.runServerTask(server ->
+//            {
+//                ServerPlayer player = server.getPlayerList().getPlayer(id);
+//                if (player == null || !player.getGameProfile().getName().equals(username)) // It must be an actual player online
+//                    return false;
+//
+//                if (address instanceof InetSocketAddress) // Make sure they are coming from the same machine
+//                {
+//                    String ip = ((InetSocketAddress) address).getAddress().getHostAddress();
+//                    if (!player.getIpAddress().equals(ip))
+//                        LOGGER.warn("Player: " + player + " with ip: " + player.getIpAddress() + " attempted to connect to the HTTP server from " + ip);
+//                    return player.getIpAddress().equals(ip);
+//                }
+//                return true;
+//            }).exceptionally(e ->
+//            {
+//                if (e != null)
+//                    e.printStackTrace();
+//                return false;
+//            }).join();
+//        }
+//        catch (Exception e)
+//        {
+//            e.printStackTrace();
+//            return false;
+//        }
+//    }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
