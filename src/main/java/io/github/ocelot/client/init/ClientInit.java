@@ -14,7 +14,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.stream.Stream;
 
-@SuppressWarnings("unused")
 public class ClientInit
 {
     @OnlyIn(Dist.CLIENT)
@@ -26,11 +25,11 @@ public class ClientInit
         {
             try
             {
-                Path modsFolder = Paths.get(Minecraft.getInstance().gameDir.getAbsolutePath(), "mods");
+                Path modsFolder = Paths.get(Minecraft.getInstance().gameDirectory.getAbsolutePath(), "mods");
                 if (!Files.exists(modsFolder))
                     Files.createDirectory(modsFolder);
 
-                Path newModsFolder = Paths.get(Minecraft.getInstance().gameDir.getAbsolutePath(), ServerDownloader.MOD_ID + "-mod-downloads");
+                Path newModsFolder = Paths.get(Minecraft.getInstance().gameDirectory.getAbsolutePath(), ServerDownloader.MOD_ID + "-mod-downloads");
                 if (!Files.exists(newModsFolder))
                     return;
 

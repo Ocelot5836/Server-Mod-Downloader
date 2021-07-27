@@ -1,0 +1,35 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Minecraft Client",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/run/client",
+      "console": "internalConsole",
+      "stopOnEntry": false,
+      "mainClass": "net.fabricmc.devlaunchinjector.Main",
+      "vmArgs": "-Dfabric.dli.config\u003dP:\\Minecraft@@0020Mods\\Server@@0020Mod@@0020Downloader\\.gradle\\loom-cache\\launch.cfg -Dfabric.dli.env\u003dclient -Dfabric.dli.main\u003dnet.minecraftforge.userdev.LaunchTesting",
+      "args": "",
+      "env": {
+        "MOD_CLASSES": "main_380e776%%P:\\Minecraft Mods\\Server Mod Downloader\\build\\resources\\main;main_380e776%%P:\\Minecraft Mods\\Server Mod Downloader\\build\\classes\\java\\main"
+      },
+      "projectName": ""
+    },
+    {
+      "type": "java",
+      "name": "Minecraft Server",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/run/server",
+      "console": "internalConsole",
+      "stopOnEntry": false,
+      "mainClass": "net.fabricmc.devlaunchinjector.Main",
+      "vmArgs": "-Dfabric.dli.config\u003dP:\\Minecraft@@0020Mods\\Server@@0020Mod@@0020Downloader\\.gradle\\loom-cache\\launch.cfg -Dfabric.dli.env\u003dserver -Dfabric.dli.main\u003dnet.minecraftforge.userdev.LaunchTesting",
+      "args": "nogui",
+      "env": {
+        "MOD_CLASSES": "main_6fdf942%%P:\\Minecraft Mods\\Server Mod Downloader\\build\\resources\\main;main_6fdf942%%P:\\Minecraft Mods\\Server Mod Downloader\\build\\classes\\java\\main"
+      },
+      "projectName": ""
+    }
+  ]
+}

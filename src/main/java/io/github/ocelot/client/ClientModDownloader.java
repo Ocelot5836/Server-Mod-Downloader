@@ -27,7 +27,7 @@ public class ClientModDownloader
     {
         try
         {
-            Path path = Paths.get(Minecraft.getInstance().gameDir.getPath(), "client-mod-downloads");
+            Path path = Paths.get(Minecraft.getInstance().gameDirectory.getPath(), "client-mod-downloads");
             Files.createDirectories(Files.exists(path) ? path.toRealPath() : path);
 
             Path file = path.resolve(fileName);

@@ -1,34 +1,31 @@
 package io.github.ocelot.client.screen;
 
-import com.mojang.blaze3d.vertex.IVertexBuilder;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import io.github.ocelot.ServerDownloader;
-import io.github.ocelot.client.ShapeRenderer;
-import io.github.ocelot.common.OnlineRequest;
-import io.github.ocelot.common.TimeUtils;
-import io.github.ocelot.common.download.ModFile;
-import net.minecraft.client.gui.screen.MainMenuScreen;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.button.Button;
-import net.minecraft.client.resources.I18n;
-import net.minecraft.util.StringUtils;
-import net.minecraft.util.text.TranslationTextComponent;
-import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.io.IOUtils;
+import io.github.ocelot.client.download.ClientDownload;
+import io.github.ocelot.client.download.ClientDownloadManager;
+import io.github.ocelot.common.UnitHelper;
+import io.github.ocelot.common.download.DownloadableModFile;
+import io.github.ocelot.sonar.client.render.ShapeRenderer;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.TextComponent;
+import net.minecraft.network.chat.TranslatableComponent;
+import net.minecraft.util.HttpUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -46,112 +43,138 @@ public class DownloadModFilesScreen extends Screen
         DECIMAL_FORMAT.setDecimalFormatSymbols(DecimalFormatSymbols.getInstance(Locale.ROOT));
     }
 
-    private final Map<ModFile, OnlineRequest.Request> downloadingFiles;
+    private final Map<DownloadableModFile, CompletableFuture<ClientDownload>> downloadingFiles;
     private final long startTime;
     private int downloadedFiles;
     private boolean cancelled;
 
-    public DownloadModFilesScreen(Set<ModFile> missingFiles)
+    public DownloadModFilesScreen(String httpServer, Set<DownloadableModFile> missingFiles)
     {
-        super(new TranslationTextComponent("screen." + ServerDownloader.MOD_ID + ".download", missingFiles.size()));
+        super(new TranslatableComponent("screen." + ServerDownloader.MOD_ID + ".download", missingFiles.size()));
         this.downloadingFiles = new HashMap<>();
-        this.startTime = System.nanoTime();
+        this.startTime = System.currentTimeMillis();
         this.downloadedFiles = 0;
         this.cancelled = false;
         missingFiles.forEach(modFile ->
         {
-            if (StringUtils.isNullOrEmpty(modFile.getUrl()))
-                return;
-            this.downloadingFiles.put(modFile, OnlineRequest.make(modFile.getUrl(), data -> this.writeToFile(modFile, data), t ->
+            this.downloadingFiles.put(modFile, ClientDownloadManager.download(modFile.getModId(), httpServer + "/download?mod=" + modFile.getModId(), download ->
             {
-                LOGGER.error("Failed to download mod file for '" + modFile + "' from '" + modFile.getUrl() + "'", t);
-                this.downloadedFiles++;
+                this.minecraft.execute(() ->
+                {
+                    this.downloadedFiles++;
+                    if (!this.cancelled && this.downloadingFiles.values().stream().allMatch(future -> future.isDone() && future.join().isCompleted() && !future.join().isFailed()))
+                    {
+                        this.minecraft.setScreen(new DownloadModFilesCompleteScreen(this.startTime, System.currentTimeMillis(), this.downloadedFiles));
+                    }
+                });
+            }).handleAsync((download, exception) ->
+            {
+                if (exception != null)
+                {
+                    exception.printStackTrace();
+                    this.cancel();
+                }
+                return download;
             }));
+//            this.downloadingFiles.put(modFile, ClientDownloadManager.download(httpServer + "?mod=" + modFile.getModId(), data -> this.writeToFile(modFile, data), t ->
+//            {
+//                LOGGER.error("Failed to download mod file for '" + modFile + "' from '" + modFile.getUrl() + "'", t);
+//                this.downloadedFiles++;
+//            }));
         });
     }
 
-    private void writeToFile(ModFile modFile, InputStream data)
+//    private void writeToFile(ModFile modFile, InputStream data)
+//    {
+//        Path downloadFolder = Paths.get(this.minecraft.gameDirectory.getAbsolutePath(), ServerDownloader.MOD_ID + "-mod-downloads");
+//        Path fileLocation = downloadFolder.resolve(modFile.getModId() + "." + FilenameUtils.getExtension(modFile.getUrl()));
+//
+//        try
+//        {
+//            if (!Files.exists(downloadFolder))
+//                Files.createDirectories(downloadFolder);
+//            if (!Files.exists(fileLocation))
+//                Files.createFile(fileLocation);
+//            try (FileOutputStream outputStream = new FileOutputStream(fileLocation.toString()))
+//            {
+//                IOUtils.copyLarge(data, outputStream);
+//            }
+//        }
+//        catch (Exception e)
+//        {
+//            LOGGER.error("Failed to write '" + modFile.getModId() + "' to '" + fileLocation + "'", e);
+//        }
+//
+//        this.getMinecraft().execute(() ->
+//        {
+//            if (this.downloadingFiles.get(modFile).isCancelled())
+//            {
+//                try
+//                {
+//                    LOGGER.debug("Deleting partial download '" + fileLocation + "'");
+//                    Files.deleteIfExists(fileLocation);
+//                }
+//                catch (IOException e)
+//                {
+//                    LOGGER.error("Failed to delete '" + fileLocation + "'", e);
+//                }
+//            }
+//            this.downloadedFiles++;
+//            if (!this.cancelled && this.downloadingFiles.values().stream().allMatch(OnlineRequest.Request::isDownloaded))
+//            {
+//                this.getMinecraft().displayGuiScreen(new DownloadModFilesCompleteScreen(this.startTime, System.nanoTime(), this.downloadedFiles));
+//            }
+//        });
+//    }
+
+    private void cancel()
     {
-        Path downloadFolder = Paths.get(this.getMinecraft().gameDir.getAbsolutePath(), ServerDownloader.MOD_ID + "-mod-downloads");
-        Path fileLocation = downloadFolder.resolve(modFile.getModId() + "." + FilenameUtils.getExtension(modFile.getUrl()));
-
-        try
-        {
-            if (!Files.exists(downloadFolder))
-                Files.createDirectories(downloadFolder);
-            if (!Files.exists(fileLocation))
-                Files.createFile(fileLocation);
-            try (FileOutputStream outputStream = new FileOutputStream(fileLocation.toString()))
-            {
-                IOUtils.copyLarge(data, outputStream);
-            }
-        }
-        catch (Exception e)
-        {
-            LOGGER.error("Failed to write '" + modFile.getModId() + "' to '" + fileLocation + "'", e);
-        }
-
-        this.getMinecraft().execute(() ->
-        {
-            if (this.downloadingFiles.get(modFile).isCancelled())
-            {
-                try
-                {
-                    LOGGER.debug("Deleting partial download '" + fileLocation + "'");
-                    Files.deleteIfExists(fileLocation);
-                }
-                catch (IOException e)
-                {
-                    LOGGER.error("Failed to delete '" + fileLocation + "'", e);
-                }
-            }
-            this.downloadedFiles++;
-            if (!this.cancelled && this.downloadingFiles.values().stream().allMatch(OnlineRequest.Request::isDownloaded))
-            {
-                this.getMinecraft().displayGuiScreen(new DownloadModFilesCompleteScreen(this.startTime, System.nanoTime(), this.downloadedFiles));
-            }
-        });
+        this.downloadingFiles.values().forEach(file -> file.thenAcceptAsync(ClientDownload::cancel, HttpUtil.DOWNLOAD_EXECUTOR));
+        this.cancelled = true;
+        this.getMinecraft().setScreen(new TitleScreen());
+        // TODO error message
     }
 
     @Override
     protected void init()
     {
-        this.addButton(new Button(this.width / 2 - 100, (this.height - 24) - this.height / 8, 200, 20, I18n.format("gui.cancel"), component ->
+        this.addButton(new Button(this.width / 2 - 100, (this.height - 24) - this.height / 8, 200, 20, new TranslatableComponent("gui.cancel"), component ->
         {
-            this.downloadingFiles.values().forEach(OnlineRequest.Request::cancel);
-            this.cancelled = true;
+            this.cancel();
             component.active = false;
-            this.getMinecraft().displayGuiScreen(new MainMenuScreen());
         }));
     }
 
     @Override
-    public void render(int mouseX, int mouseY, float partialTicks)
+    public void render(PoseStack matrixStack, int mouseX, int mouseY, float partialTicks)
     {
-        this.renderBackground();
+        this.renderBackground(matrixStack);
 
-        long now = System.nanoTime();
-        this.drawCenteredString(this.font, this.title.getFormattedText(), this.width / 2, this.height / 8, 11184810);
-        this.drawCenteredString(this.font, DECIMAL_FORMAT.format(TimeUtils.abbreviateLargestUnit(now - this.startTime, TimeUnit.NANOSECONDS)) + TimeUtils.abbreviate(TimeUtils.getLargestUnit(now - this.startTime, TimeUnit.NANOSECONDS)) + " elapsed", this.width / 2, (this.height - 24) - this.height / 8 + 26, 11184810);
-        this.drawCenteredString(this.font, I18n.format("screen.serverdownloader.download.count", this.downloadedFiles, this.downloadingFiles.size()), this.width / 2, (this.height - 24) - this.height / 8 + 30 + this.font.FONT_HEIGHT, 11184810);
+        long now = System.currentTimeMillis();
+        String time = UnitHelper.abbreviateTime(now - this.startTime, TimeUnit.MILLISECONDS) + " elapsed";
+        Component count = new TranslatableComponent("screen." + ServerDownloader.MOD_ID + ".download.count", this.downloadedFiles, this.downloadingFiles.size());
 
-        Map.Entry<ModFile, OnlineRequest.Request> hoveredEntry = null;
+        this.font.draw(matrixStack, this.title, (this.width - this.font.width(this.title)) / 2F, this.height / 8F, 11184810);
+        this.font.draw(matrixStack, time, (this.width - this.font.width(time)) / 2F, (this.height - 24) - this.height / 8F + 26, 11184810);
+        this.font.draw(matrixStack, count, (this.width - this.font.width(count)) / 2F, (this.height - 24) - this.height / 8F + 30 + this.font.lineHeight, 11184810);
+
+        Map.Entry<DownloadableModFile, CompletableFuture<ClientDownload>> hoveredEntry = null;
         int i = 0;
-        for (Map.Entry<ModFile, OnlineRequest.Request> entry : this.downloadingFiles.entrySet())
+        for (Map.Entry<DownloadableModFile, CompletableFuture<ClientDownload>> entry : this.downloadingFiles.entrySet())
         {
-            ModFile mod = entry.getKey();
-            OnlineRequest.Request request = entry.getValue();
-            if (request.getBytesReceived() > 0 && !request.isDownloaded())
+            DownloadableModFile mod = entry.getKey();
+            CompletableFuture<ClientDownload> future = entry.getValue();
+            if (future.isDone() && future.join().getBytesDownloaded() > 0 && !future.join().isCompleted())
             {
-                this.font.drawString(mod.getModId(), (this.width - 182) / 2f - this.font.getStringWidth(mod.getModId()) - 4, this.height / 8f + ((2 + i) * this.font.FONT_HEIGHT), 11184810);
+                this.font.draw(matrixStack, mod.getModId(), (this.width - 182) / 2f - this.font.width(mod.getModId()) - 4, this.height / 8f + ((2 + i) * this.font.lineHeight), 11184810);
 
-                this.getMinecraft().getTextureManager().bindTexture(GUI_ICONS_LOCATION);
-                IVertexBuilder builder = ShapeRenderer.begin();
-                ShapeRenderer.drawRectWithTexture(builder, (this.width - 182) / 2f, this.height / 8f + ((2 + i) * this.font.FONT_HEIGHT) + 1, 0, 64, 182, 5);
-                ShapeRenderer.drawRectWithTexture(builder, (this.width - 182) / 2f, this.height / 8f + ((2 + i) * this.font.FONT_HEIGHT) + 1, 0, 69, request.getDownloadPercentage() * 182, 5);
+                this.getMinecraft().getTextureManager().bind(GUI_ICONS_LOCATION);
+                VertexConsumer builder = ShapeRenderer.begin();
+                ShapeRenderer.drawRectWithTexture(builder, matrixStack, (this.width - 182) / 2f, this.height / 8f + ((2 + i) * this.font.lineHeight) + 1, 0, 64, 182, 5);
+                ShapeRenderer.drawRectWithTexture(builder, matrixStack, (this.width - 182) / 2f, this.height / 8f + ((2 + i) * this.font.lineHeight) + 1, 0, 69, (float) (future.join().getDownloadPercentage() * 182), 5);
                 ShapeRenderer.end();
 
-                if (mouseX >= (this.width - 182) / 2f && mouseX < (this.width + 182) / 2f && mouseY >= this.height / 8f + ((2 + i) * this.font.FONT_HEIGHT) && mouseY < this.height / 8f + ((2 + i) * this.font.FONT_HEIGHT) + 6)
+                if (mouseX >= (this.width - 182) / 2f && mouseX < (this.width + 182) / 2f && mouseY >= this.height / 8f + ((2 + i) * this.font.lineHeight) && mouseY < this.height / 8f + ((2 + i) * this.font.lineHeight) + 6)
                 {
                     hoveredEntry = entry;
                 }
@@ -159,11 +182,15 @@ public class DownloadModFilesScreen extends Screen
             }
         }
 
-        super.render(mouseX, mouseY, partialTicks);
+        super.render(matrixStack, mouseX, mouseY, partialTicks);
 
         if (hoveredEntry != null)
         {
-            this.renderTooltip((int) (hoveredEntry.getValue().getDownloadPercentage() * 100.0) + "%", mouseX, mouseY);
+            ClientDownload download = hoveredEntry.getValue().join();
+            MutableComponent component = new TextComponent(UnitHelper.abbreviateSize(download.getBytesDownloaded()));
+            if (download.getSize() != -1)
+                component.append(" / " + UnitHelper.abbreviateSize(download.getSize()));
+            this.renderTooltip(matrixStack, component, mouseX, mouseY);
         }
     }
 
@@ -172,10 +199,7 @@ public class DownloadModFilesScreen extends Screen
     {
         // TODO delete all files if cancelled
 
-        if (this.downloadingFiles.values().stream().allMatch(OnlineRequest.Request::isDownloaded))
-        {
-            this.cancelled = true;
-        }
+//        this.downloadingFiles.values().forEach(file->file.thenAcceptAsync(ClientDownload::cancel, HttpUtil.DOWNLOAD_EXECUTOR));
 
 //            LOGGER.debug("Deleting " + this.partialDownloadedFiles.size() + " partially downloaded files.");
 //            this.partialDownloadedFiles.forEach(path ->
@@ -191,5 +215,11 @@ public class DownloadModFilesScreen extends Screen
 //                    LOGGER.error("Failed to delete file '" + path + "'", e);
 //                }
 //            });
+    }
+
+    @Override
+    public boolean shouldCloseOnEsc()
+    {
+        return false;
     }
 }

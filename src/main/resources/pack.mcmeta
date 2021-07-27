@@ -1,6 +1,6 @@
 {
     "pack": {
-        "description": "serverdownloader resources",
-        "pack_format": 5
+        "description": "${mod_id} resources",
+        "pack_format": 6
     }
 }
