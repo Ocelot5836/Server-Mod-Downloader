@@ -18,9 +18,9 @@ public class ClientDownload implements Future<Void>
     private final long size;
     private final Path location;
     private final CompletableFuture<Void> completionFuture;
-    private Status status;
-    private long bytesDownloaded;
-    private boolean cancelled;
+    private volatile Status status;
+    private volatile long bytesDownloaded;
+    private volatile boolean cancelled;
 
     ClientDownload(String url, long size, Path location)
     {
@@ -122,24 +122,24 @@ public class ClientDownload implements Future<Void>
         return completionFuture;
     }
 
-    void addBytesDownloaded(long amount)
+    synchronized void addBytesDownloaded(long amount)
     {
         this.bytesDownloaded += amount;
     }
 
-    void completeSuccessfully()
+    synchronized void completeSuccessfully()
     {
         this.status = Status.SUCCESS;
         this.completionFuture.complete(null);
     }
 
-    void completeExceptionally(Throwable t)
+    synchronized void completeExceptionally(Throwable t)
     {
         this.status = Status.FAILED;
         this.completionFuture.completeExceptionally(t);
     }
 
-    void completeCancelled()
+    synchronized void completeCancelled()
     {
         this.status = Status.FAILED;
         this.completionFuture.complete(null);

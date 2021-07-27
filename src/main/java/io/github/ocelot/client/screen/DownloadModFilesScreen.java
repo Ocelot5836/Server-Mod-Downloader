@@ -45,14 +45,14 @@ public class DownloadModFilesScreen extends Screen
         this.startTime = System.currentTimeMillis();
         this.downloadedFiles = 0;
         this.cancelled = false;
-        missingFiles.forEach(modFile -> this.downloadingFiles.put(modFile, ClientDownloadManager.download(modFile, httpServer + "/download?mod=" + modFile.getModIds()[0], download -> this.getMinecraft().execute(() ->
+        missingFiles.forEach(modFile -> this.downloadingFiles.put(modFile, ClientDownloadManager.download(modFile, httpServer + "/download?mod=" + modFile.getModIds()[0], download ->
         {
             this.downloadedFiles++;
-            if (!this.cancelled && this.downloadingFiles.values().stream().allMatch(future -> future.isDone() && future.join().isDone() && !future.join().hasFailed()))
+            if (!this.cancelled && this.downloadingFiles.values().stream().allMatch(future -> future.isDone() && future.join().isDone()))
             {
-                Minecraft.getInstance().execute(() -> Minecraft.getInstance().setScreen(new DownloadModFilesCompleteScreen(this.startTime, System.currentTimeMillis(), this.downloadedFiles)));
+                Minecraft.getInstance().setScreen(new DownloadModFilesCompleteScreen(this.startTime, System.currentTimeMillis(), this.downloadedFiles));
             }
-        })).handleAsync((download, exception) ->
+        }).handleAsync((download, exception) ->
         {
             if (exception != null)
             {

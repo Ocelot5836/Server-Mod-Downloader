@@ -187,8 +187,11 @@ public class ClientDownloadManager
                             LOGGER.info("Skipped downloading file: " + location);
                             IOUtils.closeQuietly(pair.getSecond());
                             ClientDownload download = new ClientDownload(url, fileSize, location);
-                            download.completeSuccessfully();
-                            completeListener.accept(download);
+                            Minecraft.getInstance().execute(() ->
+                            {
+                                download.completeSuccessfully();
+                                Minecraft.getInstance().execute(() -> completeListener.accept(download));
+                            });
                             return download;
                         }
                     }
@@ -224,7 +227,7 @@ public class ClientDownloadManager
                         }
 
                         download.completeSuccessfully();
-                        completeListener.accept(download);
+                        Minecraft.getInstance().execute(() -> completeListener.accept(download));
 
                         REPLACED_MODS.put(modFile.getVisualMods(), Pair.of(location, FMLPaths.MODSDIR.get().resolve(getFileName(modFile.getModIds(), response)).toAbsolutePath()));
                         // Delete all mod files associated with the files the new mods have
@@ -235,7 +238,7 @@ public class ClientDownloadManager
                         LOGGER.info("Cancelling download for mod file: " + modFile.getVisualMods());
                         deleteFile(location);
                         download.completeCancelled();
-                        completeListener.accept(download);
+                        Minecraft.getInstance().execute(() -> completeListener.accept(download));
                     }
                     catch (Exception e)
                     {
@@ -248,7 +251,7 @@ public class ClientDownloadManager
                     {
                         e.printStackTrace();
                         download.completeExceptionally(e);
-                        completeListener.accept(download);
+                        Minecraft.getInstance().execute(() -> completeListener.accept(download));
                     }
                     return null;
                 });
