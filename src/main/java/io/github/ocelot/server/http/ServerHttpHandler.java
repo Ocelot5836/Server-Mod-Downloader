@@ -9,6 +9,8 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.loading.moddiscovery.ModFileInfo;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -28,6 +30,8 @@ import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
  */
 public class ServerHttpHandler extends SimpleChannelInboundHandler<Object>
 {
+    private static final Logger LOGGER = LogManager.getLogger();
+
     private final HttpCache cache;
     private HttpRequest request;
     private String contentType = "text/raw";
@@ -141,7 +145,8 @@ public class ServerHttpHandler extends SimpleChannelInboundHandler<Object>
                 if (address instanceof InetSocketAddress) // Make sure they are coming from the same machine
                 {
                     String ip = ((InetSocketAddress) address).getAddress().getHostAddress();
-                    System.out.println("Player: " + player.getIpAddress() + ", Connection: " + ip);
+                    if (!player.getIpAddress().equals(ip))
+                        LOGGER.warn("Player: " + player + " with ip: " + player.getIpAddress() + " attempted to connect to the HTTP server from " + ip);
                     return player.getIpAddress().equals(ip);
                 }
                 return true;

@@ -68,7 +68,7 @@ public class ClientDownloadManager
                     {
                         try
                         {
-                            Thread.sleep(1000L);
+                            Thread.sleep(1000L); // In case of concurrency issues, try again in a second up to 10 times
                         }
                         catch (InterruptedException e1)
                         {
@@ -114,7 +114,7 @@ public class ClientDownloadManager
                     {
                         try
                         {
-                            Thread.sleep(1000L);
+                            Thread.sleep(1000L); // In case of concurrency issues, try again in a second up to 10 times
                         }
                         catch (InterruptedException e1)
                         {
@@ -253,11 +253,6 @@ public class ClientDownloadManager
         }, HttpUtil.DOWNLOAD_EXECUTOR);
     }
 
-    public static void clean()
-    {
-
-    }
-
     private static Pair<HttpResponse, InputStream> getStream(String url) throws IOException
     {
         HttpGet get = new HttpGet(url);
@@ -285,8 +280,9 @@ public class ClientDownloadManager
         return Pair.of(response, new EofSensorInputStream(response.getEntity().getContent(), new EofSensorWatcher()
         {
             @Override
-            public boolean eofDetected(InputStream wrapped)
+            public boolean eofDetected(InputStream wrapped) throws IOException
             {
+                response.close();
                 return true;
             }
 
