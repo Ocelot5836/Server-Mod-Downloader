@@ -2,10 +2,13 @@ package io.github.ocelot.client.screen;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import io.github.ocelot.ServerDownloader;
+import io.github.ocelot.common.UnitHelper;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.network.chat.TranslatableComponent;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Ocelot
@@ -14,7 +17,7 @@ public class DownloadModFilesCompleteScreen extends Screen
 {
     public DownloadModFilesCompleteScreen(long startTime, long endTime, int downloadedFiles)
     {
-        super(new TranslatableComponent("screen." + ServerDownloader.MOD_ID + ".complete_download", downloadedFiles, "lol I dunno"/*DownloadModFilesScreen.DECIMAL_FORMAT.format(TimeUtils.abbreviateLargestUnit(endTime - startTime, TimeUnit.NANOSECONDS)) + TimeUtils.abbreviate(TimeUtils.getLargestUnit(endTime - startTime, TimeUnit.NANOSECONDS))*/));
+        super(new TranslatableComponent("screen." + ServerDownloader.MOD_ID + ".complete_download", downloadedFiles, UnitHelper.abbreviateTime(endTime - startTime, TimeUnit.MILLISECONDS)));
     }
 
     @Override

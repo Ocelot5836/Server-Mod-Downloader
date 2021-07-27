@@ -9,6 +9,9 @@ import java.util.concurrent.TimeUnit;
 
 import static java.util.concurrent.TimeUnit.*;
 
+/**
+ * @author Ocelot
+ */
 public class UnitHelper
 {
     private static final DecimalFormat FORMAT = Util.make(new DecimalFormat("#.#"), format -> format.setDecimalFormatSymbols(DecimalFormatSymbols.getInstance(Locale.ROOT)));
@@ -28,7 +31,7 @@ public class UnitHelper
     {
         TimeUnit unit = chooseUnit(sourceUnit.toNanos(sourceTime));
         double value = (double) sourceTime / sourceUnit.convert(1, unit);
-        return (int) value + " " + abbreviate(unit);
+        return (int) value + abbreviate(unit);
     }
 
     private static TimeUnit chooseUnit(long nanos)

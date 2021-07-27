@@ -33,7 +33,9 @@ public class NotifyFileStatusMessage extends SimpleSonarLoginMessage<IDownloader
         {
             try
             {
-                this.files.add(buf.readWithCodec(DownloadableModFile.CODEC));
+                DownloadableModFile modFile = buf.readWithCodec(DownloadableModFile.CODEC);
+                if (modFile.getModIds().length > 0)
+                    this.files.add(modFile);
             }
             catch (IOException e)
             {

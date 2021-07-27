@@ -39,8 +39,9 @@ public class ModFileManager
             try (FileInputStream is = new FileInputStream(file.getFilePath().toFile()))
             {
                 String hash = DigestUtils.sha1Hex(is);
+                DownloadableModFile modFile = new DownloadableModFile(info.getMods().stream().map(IModInfo::getModId).toArray(String[]::new), hash);
                 for (IModInfo modInfo : info.getMods())
-                    MOD_FILES.put(modInfo.getModId(), new DownloadableModFile(modInfo.getModId(), hash));
+                    MOD_FILES.put(modInfo.getModId(), modFile);
             }
             catch (IOException e)
             {
@@ -100,13 +101,13 @@ public class ModFileManager
     @OnlyIn(Dist.DEDICATED_SERVER)
     public static Set<DownloadableModFile> getClientMissingFiles(Set<DownloadableModFile> clientFiles)
     {
-        return MOD_FILES.values().stream().filter(serverFile -> !clientFiles.contains(serverFile) || !MOD_FILES.get(serverFile.getModId()).getHash().equals(serverFile.getHash())).collect(Collectors.toSet());
+        return MOD_FILES.values().stream().filter(serverFile -> !clientFiles.contains(serverFile)).collect(Collectors.toSet());
     }
 
     @OnlyIn(Dist.CLIENT)
     public static Set<DownloadableModFile> getMissingFiles(Set<DownloadableModFile> serverFiles)
     {
-        return serverFiles.stream().filter(serverFile -> !MOD_FILES.containsValue(serverFile) || !MOD_FILES.get(serverFile.getModId()).getHash().equals(serverFile.getHash())).collect(Collectors.toSet());
+        return serverFiles.stream().filter(serverFile -> !MOD_FILES.containsValue(serverFile)).collect(Collectors.toSet());
     }
 
     @Nullable

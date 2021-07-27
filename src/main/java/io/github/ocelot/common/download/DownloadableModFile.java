@@ -2,11 +2,8 @@ package io.github.ocelot.common.download;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraftforge.fml.loading.moddiscovery.ModInfo;
-import org.apache.commons.codec.digest.DigestUtils;
 
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.util.Arrays;
 import java.util.Objects;
 
 /**
@@ -15,22 +12,22 @@ import java.util.Objects;
 public class DownloadableModFile
 {
     public static final Codec<DownloadableModFile> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-            Codec.STRING.fieldOf("mod_id").forGetter(DownloadableModFile::getModId),
+            Codec.STRING.listOf().fieldOf("mod_ids").forGetter(file -> Arrays.asList(file.getModIds())),
             Codec.STRING.fieldOf("hash").forGetter(DownloadableModFile::getHash)
-    ).apply(instance, DownloadableModFile::new));
+    ).apply(instance, (modIds, hash) -> new DownloadableModFile(modIds.toArray(new String[0]), hash)));
 
-    private final String modId;
+    private final String[] modIds;
     private final String hash;
 
-    public DownloadableModFile(String modId, String hash)
+    public DownloadableModFile(String[] modIds, String hash)
     {
-        this.modId = modId;
+        this.modIds = modIds;
         this.hash = hash;
     }
 
-    public String getModId()
+    public String[] getModIds()
     {
-        return modId;
+        return modIds;
     }
 
     public String getHash()
@@ -43,20 +40,21 @@ public class DownloadableModFile
     {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        DownloadableModFile modFile = (DownloadableModFile) o;
-        return modId.equals(modFile.modId) &&
-                hash.equals(modFile.hash);
+        DownloadableModFile that = (DownloadableModFile) o;
+        return Arrays.equals(this.modIds, that.modIds) && this.hash.equals(that.hash);
     }
 
     @Override
     public int hashCode()
     {
-        return Objects.hash(modId, hash);
+        int result = Objects.hash(this.hash);
+        result = 31 * result + Arrays.hashCode(this.modIds);
+        return result;
     }
 
     @Override
     public String toString()
     {
-        return "ModFile{" + this.modId + ", Hash: " + this.hash + "}";
+        return "ModFile{Mods: " + Arrays.toString(this.modIds) + ", Hash: " + this.hash + "}";
     }
 }
