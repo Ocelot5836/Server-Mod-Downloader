@@ -3,11 +3,8 @@
   "package": "io.github.ocelot.mixin",
   "compatibilityLevel": "JAVA_8",
   "minVersion": "0.8",
-  "mixins": [
-    "FMLHandshakeHandlerMixin"
-  ],
-  "client": [
-  ],
+  "mixins": ["FMLHandshakeHandlerMixin"],
+  "server": ["MinecraftServerMixin", "PlayerListMixin"],
   "injectors": {
     "defaultRequire": 1
   }

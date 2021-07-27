@@ -5,17 +5,20 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.*;
-import net.minecraft.Util;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.loading.moddiscovery.ModFileInfo;
-import org.apache.commons.codec.digest.DigestUtils;
 
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.charset.StandardCharsets;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static io.netty.handler.codec.http.HttpResponseStatus.*;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
@@ -96,19 +99,20 @@ public class ServerHttpHandler extends SimpleChannelInboundHandler<Object>
                         });
                         break;
                     }
-//                    case "validate":
-//                    {
-//                        parameters.getOrDefault("mod", Collections.emptyList()).stream().filter(BlacklistedServerModLoader::isValid).findFirst().ifPresent(modId ->
-//                        {
-//                            ModFileInfo info = ModList.get().getModFileById(modId);
-//                            if (info != null)
-//                            {
-//                                this.contentType = "text/raw";
-//                                this.responseData = this.cache.getFile(info.getFile().getFilePath()).thenApplyAsync(DigestUtils::sha1Hex, Util.ioPool()).join().getBytes(StandardCharsets.UTF_8);
-//                            }
-//                        });
-//                        break;
-//                    }
+                    case "resources.zip":
+                    {
+                        if (!this.isOnline(ctx.channel().remoteAddress(), request.headers()))
+                            break;
+
+                        String resourcePack = this.cache.runServerTask(MinecraftServer::getResourcePack).join();
+                        if (resourcePack != null && resourcePack.startsWith("level://"))
+                        {
+                            this.contentType = "application/zip";
+                            this.contentDisposition = "attachment; filename=\"resources.zip\"";
+                            this.responseData = this.cache.getFile(Paths.get(resourcePack.substring(8))).join();
+                        }
+                        break;
+                    }
                 }
             }
         }
@@ -116,6 +120,42 @@ public class ServerHttpHandler extends SimpleChannelInboundHandler<Object>
         if (msg instanceof LastHttpContent)
         {
             writeResponse(ctx, (LastHttpContent) msg);
+        }
+    }
+
+    private boolean isOnline(SocketAddress address, HttpHeaders headers)
+    {
+        if (!headers.contains("X-Minecraft-Username") || !headers.contains("X-Minecraft-UUID"))
+            return false;
+
+        try
+        {
+            String username = headers.get("X-Minecraft-Username");
+            UUID id = UUID.fromString(headers.get("X-Minecraft-UUID"));
+            return this.cache.runServerTask(server ->
+            {
+                ServerPlayer player = server.getPlayerList().getPlayer(id);
+                if (player == null || !player.getGameProfile().getName().equals(username)) // It must be an actual player online
+                    return false;
+
+                if (address instanceof InetSocketAddress) // Make sure they are coming from the same machine
+                {
+                    String ip = ((InetSocketAddress) address).getAddress().getHostAddress();
+                    System.out.println("Player: " + player.getIpAddress() + ", Connection: " + ip);
+                    return player.getIpAddress().equals(ip);
+                }
+                return true;
+            }).exceptionally(e ->
+            {
+                if (e != null)
+                    e.printStackTrace();
+                return false;
+            }).join();
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            return false;
         }
     }
 
