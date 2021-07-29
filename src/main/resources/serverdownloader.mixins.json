@@ -1,10 +1,10 @@
 {
   "required": true,
-  "package": "io.github.ocelot.mixin",
+  "package": "io.github.ocelot.serverdownloader.mixin",
   "compatibilityLevel": "JAVA_8",
   "minVersion": "0.8",
   "mixins": ["FMLHandshakeHandlerMixin"],
-  "server": ["MinecraftServerMixin", "PlayerListMixin"],
+  "server": ["server.MinecraftServerMixin", "server.PlayerListMixin"],
   "injectors": {
     "defaultRequire": 1
   }
