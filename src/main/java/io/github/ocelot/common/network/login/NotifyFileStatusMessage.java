@@ -7,7 +7,6 @@ import io.github.ocelot.sonar.common.network.message.SimpleSonarLoginMessage;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.fml.network.NetworkEvent;
 
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -37,7 +36,7 @@ public class NotifyFileStatusMessage extends SimpleSonarLoginMessage<IDownloader
                 if (modFile.getModIds().length > 0)
                     this.files.add(modFile);
             }
-            catch (IOException e)
+            catch (Exception e)
             {
                 throw new IllegalStateException("Failed to read server file from packet", e);
             }
@@ -54,7 +53,7 @@ public class NotifyFileStatusMessage extends SimpleSonarLoginMessage<IDownloader
             {
                 buf.writeWithCodec(DownloadableModFile.CODEC, file);
             }
-            catch (IOException e)
+            catch (Exception e)
             {
                 throw new IllegalStateException("Failed to write server file to packet", e);
             }
@@ -67,6 +66,9 @@ public class NotifyFileStatusMessage extends SimpleSonarLoginMessage<IDownloader
         handler.handleNotifyFileStatusMessage(this, ctx);
     }
 
+    /**
+     * @return The files sent by the other side
+     */
     public Set<DownloadableModFile> getFiles()
     {
         return files;

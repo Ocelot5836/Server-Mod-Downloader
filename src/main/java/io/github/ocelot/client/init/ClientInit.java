@@ -12,15 +12,15 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.stream.Stream;
 
+/**
+ * @author Ocelot
+ */
 public class ClientInit
 {
     @OnlyIn(Dist.CLIENT)
     public static void init(IEventBus bus)
     {
-        ModFileManager.load();
-
         Runtime.getRuntime().addShutdownHook(new Thread(() ->
         {
             try

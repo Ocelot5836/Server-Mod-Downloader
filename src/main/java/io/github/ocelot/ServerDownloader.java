@@ -1,16 +1,11 @@
 package io.github.ocelot;
 
-import com.mojang.brigadier.CommandDispatcher;
 import io.github.ocelot.client.init.ClientInit;
-import io.github.ocelot.common.download.ModFileManager;
 import io.github.ocelot.common.network.ServerDownloaderMessages;
-import io.github.ocelot.server.command.ReloadClientModsCommand;
-import io.github.ocelot.server.http.BattlefieldsHttpServer;
-import io.github.ocelot.server.http.BlacklistedServerModLoader;
-import net.minecraft.commands.CommandSourceStack;
+import io.github.ocelot.server.BlacklistedServerModLoader;
+import io.github.ocelot.server.ModFileHttpServer;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.event.AddReloadListenerEvent;
-import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.DistExecutor;
@@ -46,13 +41,6 @@ public class ServerDownloader
     }
 
     @SubscribeEvent
-    public static void onEvent(RegisterCommandsEvent event)
-    {
-        CommandDispatcher<CommandSourceStack> dispatcher = event.getDispatcher();
-        ReloadClientModsCommand.register(dispatcher);
-    }
-
-    @SubscribeEvent
     public static void onEvent(AddReloadListenerEvent event)
     {
         event.addListener(BlacklistedServerModLoader.INSTANCE);
@@ -61,13 +49,12 @@ public class ServerDownloader
     @SubscribeEvent
     public static void onEvent(FMLServerStartingEvent event)
     {
-        ModFileManager.load();
-        BattlefieldsHttpServer.open(event.getServer());
+        ModFileHttpServer.open(event.getServer());
     }
 
     @SubscribeEvent
     public static void onEvent(FMLServerStoppingEvent event)
     {
-        BattlefieldsHttpServer.shutdown();
+        ModFileHttpServer.shutdown();
     }
 }

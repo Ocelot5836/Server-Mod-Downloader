@@ -1,15 +1,19 @@
 package io.github.ocelot.common.download;
 
+import net.minecraft.Util;
+import net.minecraft.server.packs.resources.PreparableReloadListener;
+import net.minecraft.server.packs.resources.ResourceManager;
+import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraftforge.event.AddReloadListenerEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.ModList;
+import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.loading.moddiscovery.ModFile;
 import net.minecraftforge.forgespi.language.IModInfo;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
-import javax.annotation.Nullable;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -17,85 +21,23 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
 /**
  * @author Ocelot
  */
+@Mod.EventBusSubscriber
 public class ModFileManager
 {
-    private static final Logger LOGGER = LogManager.getLogger();
     private static final Map<String, DownloadableModFile> MOD_FILES = new HashMap<>();
 
-    public static void load()
+    @SubscribeEvent
+    public static void onEvent(AddReloadListenerEvent event)
     {
-        MOD_FILES.clear();
-
-        ModList.get().getModFiles().forEach(info ->
-        {
-            ModFile file = info.getFile();
-            if (!Files.isRegularFile(file.getFilePath()))
-                return;
-            try (FileInputStream is = new FileInputStream(file.getFilePath().toFile()))
-            {
-                String hash = DigestUtils.sha1Hex(is);
-                DownloadableModFile modFile = new DownloadableModFile(info.getMods().stream().map(IModInfo::getModId).toArray(String[]::new), hash);
-                for (IModInfo modInfo : info.getMods())
-                    MOD_FILES.put(modInfo.getModId(), modFile);
-            }
-            catch (IOException e)
-            {
-                throw new RuntimeException("Failed to read mod file: " + file.getFileName(), e);
-            }
-        });
-//        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ModList.get().getMods().forEach(modInfo -> MOD_FILES.put(modInfo.getModId(), new ModFile(modInfo))));
-//        DistExecutor.unsafeRunWhenOn(Dist.DEDICATED_SERVER, () -> () ->
-//        {
-//            try
-//            {
-//                Path path = Paths.get("client-mods.json");
-//                if (!Files.exists(path))
-//                {
-//                    LOGGER.info(path + " does not exist so it will not be loaded.");
-//                    return;
-//                }
-//
-//                try (FileInputStream inputStream = new FileInputStream(path.toString()))
-//                {
-//                    JsonArray json = new JsonParser().parse(IOUtils.toString(inputStream, StandardCharsets.UTF_8)).getAsJsonArray();
-//                    Set<String> failedMods = new HashSet<>();
-//                    for (int i = 0; i < json.size(); i++)
-//                    {
-//                        String modId = null;
-//                        try
-//                        {
-//                            JsonObject modJson = json.get(i).getAsJsonObject();
-//                            modId = modJson.get("modId").getAsString();
-//                            if (MOD_FILES.containsKey(modId))
-//                                throw new JsonParseException("Duplicate mod '" + modId + "'. Skipping!");
-//                            if (!(modJson.has("clientOnly") && modJson.get("clientOnly").getAsBoolean()) && !ModList.get().isLoaded(modId))
-//                                throw new JsonParseException(modId + " does not appear to be a valid or loaded mod. Skipping!");
-//
-//                            MOD_FILES.put(modId, new ModFile(modId, modJson.get("version").getAsString(), modJson.get("url").getAsString()));
-//                        }
-//                        catch (Exception e)
-//                        {
-//                            LOGGER.error(modId == null ? ("Failed to load mod at '" + i + "'") : "Failed to load mod '" + modId + "'", e);
-//                            failedMods.add(modId == null ? ("Unknown " + i) : modId);
-//                        }
-//                    }
-//                    LOGGER.debug("Loaded " + MOD_FILES.size() + " client mod(s)." + (failedMods.isEmpty() ? "" : failedMods.size() + " mod(s) failed to load."));
-//                }
-//                catch (Exception e)
-//                {
-//                    LOGGER.error("Failed to load '" + path + "'", e);
-//                }
-//            }
-//            catch (Exception e)
-//            {
-//                LOGGER.error("Could not initialize mod file manager.", e);
-//            }
-//        });
+        event.addListener(new Reloader());
     }
 
     @OnlyIn(Dist.DEDICATED_SERVER)
@@ -110,14 +52,36 @@ public class ModFileManager
         return serverFiles.stream().filter(serverFile -> !MOD_FILES.containsValue(serverFile)).collect(Collectors.toSet());
     }
 
-    @Nullable
-    public static DownloadableModFile getModFile(String modId)
-    {
-        return MOD_FILES.get(modId);
-    }
-
     public static Collection<DownloadableModFile> getFiles()
     {
         return MOD_FILES.values();
+    }
+
+    private static class Reloader implements PreparableReloadListener
+    {
+        @Override
+        public CompletableFuture<Void> reload(PreparationBarrier barrier, ResourceManager resourceManager, ProfilerFiller preparationsProfiler, ProfilerFiller executionProfiler, Executor backgroundExecutor, Executor gameExecutor)
+        {
+            return CompletableFuture.runAsync(MOD_FILES::clear, gameExecutor).thenCompose(__ -> CompletableFuture.allOf(ModList.get().getModFiles().stream().map(info -> CompletableFuture.supplyAsync(() ->
+            {
+                ModFile file = info.getFile();
+                if (!Files.isRegularFile(file.getFilePath()))
+                    return null;
+                try (FileInputStream is = new FileInputStream(file.getFilePath().toFile()))
+                {
+                    return new DownloadableModFile(info.getMods().stream().map(IModInfo::getModId).toArray(String[]::new), DigestUtils.sha1Hex(is));
+                }
+                catch (IOException e)
+                {
+                    throw new CompletionException("Failed to read mod file: " + file.getFileName(), e);
+                }
+            }, Util.ioPool()).thenCompose(barrier::wait).thenAcceptAsync(modFile ->
+            {
+                if (modFile == null)
+                    return;
+                for (IModInfo modInfo : info.getMods())
+                    MOD_FILES.put(modInfo.getModId(), modFile);
+            }, gameExecutor)).toArray(CompletableFuture[]::new)));
+        }
     }
 }

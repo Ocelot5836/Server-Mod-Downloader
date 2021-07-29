@@ -1,4 +1,4 @@
-package io.github.ocelot.server.http;
+package io.github.ocelot.server;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
@@ -30,7 +30,6 @@ import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -41,7 +40,7 @@ import java.util.function.Function;
  *
  * @author Ocelot
  */
-public class BattlefieldsHttpServer
+public class ModFileHttpServer
 {
     private static final Logger LOGGER = LogManager.getLogger();
 
@@ -123,6 +122,7 @@ public class BattlefieldsHttpServer
         {
             LOGGER.error("Failed to shut down HTTP server", e);
         }
+        LOGGER.info("Shut down HTTP server");
         serverThread = null;
         channel = null;
     }

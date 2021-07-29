@@ -22,6 +22,12 @@ public class FMLHandshakeHandlerMixin
         ServerDownloaderMessages.LOGIN.reply(new NotifyFileStatusMessage(), c.get());
     }
 
+    @Inject(method = "handleClientModListOnServer", at = @At("HEAD"), remap = false)
+    public void handleServerModListOnClientTest(FMLHandshakeMessages.C2SModListReply clientModList, Supplier<NetworkEvent.Context> c, CallbackInfo ci)
+    {
+        System.out.println("Test");
+    }
+
     @Inject(method = "handleRegistryLoading", at = @At(value = "INVOKE", target = "Lnet/minecraft/network/Connection;disconnect(Lnet/minecraft/network/chat/Component;)V", shift = At.Shift.BEFORE), remap = false, cancellable = true)
     public void handleRegistryLoading(Supplier<NetworkEvent.Context> c, CallbackInfoReturnable<Boolean> cir)
     {

@@ -40,6 +40,9 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
+/**
+ * @author Ocelot
+ */
 public class ClientDownloadManager
 {
     private static final Logger LOGGER = LogManager.getLogger();

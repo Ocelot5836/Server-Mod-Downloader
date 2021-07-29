@@ -1,4 +1,4 @@
-package io.github.ocelot.server.http;
+package io.github.ocelot.server;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.gson.JsonArray;

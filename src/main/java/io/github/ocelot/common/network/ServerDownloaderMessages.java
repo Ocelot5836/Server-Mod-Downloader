@@ -1,11 +1,10 @@
 package io.github.ocelot.common.network;
 
 import io.github.ocelot.ServerDownloader;
-import io.github.ocelot.common.download.ModFileManager;
-import io.github.ocelot.common.network.login.NotifyFileStatusMessage;
-import io.github.ocelot.common.network.login.NotifyFileStatusResponseMessage;
 import io.github.ocelot.common.network.handler.DownloaderClientLoginHandler;
 import io.github.ocelot.common.network.handler.DownloaderServerLoginHandler;
+import io.github.ocelot.common.network.login.NotifyFileStatusMessage;
+import io.github.ocelot.common.network.login.NotifyFileStatusResponseMessage;
 import io.github.ocelot.sonar.common.network.SonarNetworkManager;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.fml.network.NetworkDirection;

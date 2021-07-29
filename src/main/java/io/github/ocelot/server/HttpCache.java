@@ -1,4 +1,4 @@
-package io.github.ocelot.server.http;
+package io.github.ocelot.server;
 
 import net.minecraft.server.MinecraftServer;
 
