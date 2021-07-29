@@ -58,7 +58,7 @@ public class DownloadModFilesScreen extends Screen
             {
                 exception.printStackTrace();
                 this.cancel();
-                SystemToast.onPackCopyFailure(Minecraft.getInstance(), exception.getMessage());
+                SystemToast.multiline(Minecraft.getInstance(), SystemToast.SystemToastIds.PACK_COPY_FAILURE, new TranslatableComponent("toast." + ServerDownloader.MOD_ID + ".download_failure"), new TextComponent(exception.getMessage()));
             }
             return download;
         }, Minecraft.getInstance())));
@@ -66,6 +66,9 @@ public class DownloadModFilesScreen extends Screen
 
     private void cancel()
     {
+        if (this.cancelled)
+            return;
+
         this.downloadingFiles.values().forEach(file -> file.thenAcceptAsync(download -> download.cancel(true), HttpUtil.DOWNLOAD_EXECUTOR));
         this.cancelled = true;
         this.cancelButton.active = false;
@@ -102,7 +105,7 @@ public class DownloadModFilesScreen extends Screen
         {
             DownloadableModFile mod = entry.getKey();
             CompletableFuture<ClientDownload> future = entry.getValue();
-            if (future.isDone() && future.join().getBytesDownloaded() > 0 && !future.join().isDone())
+            if (future.isDone() && future.join() != null && future.join().getBytesDownloaded() > 0 && !future.join().isDone())
             {
                 String ids = String.join(", ", mod.getModIds());
                 this.font.draw(matrixStack, ids, (this.width - 182) / 2f - this.font.width(ids) - 4, Mth.fastFloor(this.height / 8F) + ((2 + i) * this.font.lineHeight), 11184810);

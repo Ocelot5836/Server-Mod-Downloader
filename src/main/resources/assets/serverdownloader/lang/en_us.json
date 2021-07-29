@@ -8,5 +8,6 @@
   "screen.serverdownloader.download.count": "Downloaded %s/%s Files",
   "screen.serverdownloader.complete_download": "Downloaded %s Files in %s",
   "button.serverdownloader.download": "Download",
-  "button.serverdownloader.restart": "Restart Game"
+  "button.serverdownloader.restart": "Restart Game",
+  "toast.serverdownloader.download_failure": "Failed to download Mods"
 }

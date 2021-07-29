@@ -189,7 +189,7 @@ public class ClientDownloadManager
                             // If it is, then skip downloading and move on
                             LOGGER.info("Skipped downloading file: " + location);
                             IOUtils.closeQuietly(pair.getSecond());
-                            ClientDownload download = new ClientDownload(url, fileSize, location);
+                            ClientDownload download = new ClientDownload(fileSize);
                             Minecraft.getInstance().execute(() ->
                             {
                                 download.completeSuccessfully();
@@ -203,7 +203,7 @@ public class ClientDownloadManager
                     }
                 }
 
-                ClientDownload download = new ClientDownload(url, fileSize, location);
+                ClientDownload download = new ClientDownload(fileSize);
                 // Perform the download
                 CompletableFuture.runAsync(() ->
                 {
@@ -263,7 +263,13 @@ public class ClientDownloadManager
             catch (Exception e)
             {
                 IOUtils.closeQuietly(stream);
-                throw new CompletionException("Failed to request mod file: " + modFile.getVisualMods(), e);
+                ClientDownload download = new ClientDownload(-1);
+                Minecraft.getInstance().execute(() ->
+                {
+                    download.completeExceptionally(new CompletionException("Failed to request mod file: " + modFile.getVisualMods(), e));
+                    Minecraft.getInstance().execute(() -> completeListener.accept(download));
+                });
+                return download;
             }
         }, HttpUtil.DOWNLOAD_EXECUTOR);
     }

@@ -8,6 +8,8 @@ import io.github.ocelot.serverdownloader.ServerDownloader;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.fml.ExtensionPoint;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.network.FMLNetworkConstants;
@@ -78,14 +80,16 @@ public class BlacklistedServerModLoader extends SimplePreparableReloadListener<S
         this.blacklistedMods.clear();
         this.blacklistedMods.addAll(INVALID_MODS);
         this.blacklistedMods.addAll(object);
+        LOGGER.info("Loaded " + this.blacklistedMods.size() + " blacklisted mods");
     }
 
     /**
      * Checks to see if the specified mod is valid to be sent to the client.
      *
      * @param modId The mod id to check
-     * @return Whether or not that mod can be sent
+     * @return Whether that mod can be sent
      */
+    @OnlyIn(Dist.DEDICATED_SERVER)
     public static boolean isValid(String modId)
     {
         return !INSTANCE.blacklistedMods.contains(modId);

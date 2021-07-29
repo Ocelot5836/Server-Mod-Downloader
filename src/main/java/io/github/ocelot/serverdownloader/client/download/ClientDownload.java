@@ -14,19 +14,15 @@ import java.util.concurrent.TimeUnit;
  */
 public class ClientDownload implements Future<Void>
 {
-    private final String url;
     private final long size;
-    private final Path location;
     private final CompletableFuture<Void> completionFuture;
     private volatile Status status;
     private volatile long bytesDownloaded;
     private volatile boolean cancelled;
 
-    ClientDownload(String url, long size, Path location)
+    ClientDownload(long size)
     {
-        this.url = url;
         this.size = size;
-        this.location = location;
         this.completionFuture = new CompletableFuture<>();
         this.status = Status.DOWNLOADING;
         this.bytesDownloaded = 0;
@@ -43,27 +39,11 @@ public class ClientDownload implements Future<Void>
     }
 
     /**
-     * @return The URL the file is being downloaded from
-     */
-    public String getUrl()
-    {
-        return url;
-    }
-
-    /**
      * @return The known size of the download or <code>-1</code> if not specified
      */
     public long getSize()
     {
         return size;
-    }
-
-    /**
-     * @return The location of where the file will be stored
-     */
-    public Path getLocation()
-    {
-        return location;
     }
 
     /**

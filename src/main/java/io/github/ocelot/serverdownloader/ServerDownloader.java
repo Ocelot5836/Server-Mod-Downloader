@@ -1,5 +1,6 @@
 package io.github.ocelot.serverdownloader;
 
+import io.github.ocelot.serverdownloader.common.download.ModFileManager;
 import io.github.ocelot.serverdownloader.common.network.ServerDownloaderMessages;
 import io.github.ocelot.serverdownloader.server.BlacklistedServerModLoader;
 import io.github.ocelot.serverdownloader.server.ModFileHttpServer;
@@ -43,7 +44,7 @@ public class ServerDownloader
     @SubscribeEvent
     public static void onEvent(AddReloadListenerEvent event)
     {
-        event.addListener(BlacklistedServerModLoader.INSTANCE);
+        event.addListener(ModFileManager.getReloader());
     }
 
     @SubscribeEvent
