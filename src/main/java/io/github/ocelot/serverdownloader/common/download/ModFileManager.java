@@ -1,6 +1,5 @@
 package io.github.ocelot.serverdownloader.common.download;
 
-import io.github.ocelot.serverdownloader.ServerDownloader;
 import io.github.ocelot.serverdownloader.server.BlacklistedServerModLoader;
 import net.minecraft.Util;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
@@ -10,8 +9,8 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.fml.LogicalSide;
 import net.minecraftforge.fml.ModList;
-import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.thread.EffectiveSide;
+import net.minecraftforge.fml.loading.FMLLoader;
 import net.minecraftforge.fml.loading.moddiscovery.ModFile;
 import net.minecraftforge.forgespi.language.IModInfo;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -31,7 +30,6 @@ import java.util.stream.Collectors;
 /**
  * @author Ocelot
  */
-@Mod.EventBusSubscriber(modid = ServerDownloader.MOD_ID, value = Dist.DEDICATED_SERVER)
 public class ModFileManager
 {
     private static final Map<String, DownloadableModFile> MOD_FILES = new HashMap<>();
@@ -79,12 +77,12 @@ public class ModFileManager
 
     private static class Reloader implements PreparableReloadListener
     {
-        private final LogicalSide side = EffectiveSide.get();
+        private final Dist dist = FMLLoader.getDist();
 
         @Override
         public CompletableFuture<Void> reload(PreparationBarrier barrier, ResourceManager resourceManager, ProfilerFiller preparationsProfiler, ProfilerFiller executionProfiler, Executor backgroundExecutor, Executor gameExecutor)
         {
-            return CompletableFuture.runAsync(MOD_FILES::clear, gameExecutor).thenCompose(__ -> (this.side.isClient() ? CompletableFuture.completedFuture(null) : BlacklistedServerModLoader.INSTANCE.reload(barrier, resourceManager, preparationsProfiler, executionProfiler, backgroundExecutor, gameExecutor)).thenCompose(___ -> CompletableFuture.allOf(ModList.get().getModFiles().stream().map(info -> CompletableFuture.supplyAsync(() ->
+            return CompletableFuture.runAsync(MOD_FILES::clear, gameExecutor).thenCompose(__ -> (this.dist.isClient() ? CompletableFuture.completedFuture(null) : BlacklistedServerModLoader.INSTANCE.reload(barrier, resourceManager, preparationsProfiler, executionProfiler, backgroundExecutor, gameExecutor)).thenCompose(___ -> CompletableFuture.allOf(ModList.get().getModFiles().stream().map(info -> CompletableFuture.supplyAsync(() ->
             {
                 ModFile file = info.getFile();
                 if (!Files.isRegularFile(file.getFilePath()))
@@ -101,9 +99,10 @@ public class ModFileManager
             {
                 if (modFile == null)
                     return;
+                if (this.dist.isDedicatedServer() && !info.getMods().stream().map(IModInfo::getModId).allMatch(BlacklistedServerModLoader::isValid))
+                    return;
                 for (IModInfo modInfo : info.getMods())
-                    if (this.side.isClient() || BlacklistedServerModLoader.isValid(modInfo.getModId()))
-                        MOD_FILES.put(modInfo.getModId(), modFile);
+                    MOD_FILES.put(modInfo.getModId(), modFile);
             }, gameExecutor)).toArray(CompletableFuture[]::new))));
         }
     }
