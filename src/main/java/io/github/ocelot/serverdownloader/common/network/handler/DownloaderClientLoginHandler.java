@@ -1,9 +1,9 @@
 package io.github.ocelot.serverdownloader.common.network.handler;
 
-import io.github.ocelot.serverdownloader.common.network.ServerDownloaderMessages;
 import io.github.ocelot.serverdownloader.client.screen.DownloadModFilesConfirmationScreen;
 import io.github.ocelot.serverdownloader.common.download.DownloadableModFile;
 import io.github.ocelot.serverdownloader.common.download.ModFileManager;
+import io.github.ocelot.serverdownloader.common.network.ServerDownloaderMessages;
 import io.github.ocelot.serverdownloader.common.network.login.NotifyFileStatusMessage;
 import io.github.ocelot.serverdownloader.common.network.login.NotifyFileStatusResponseMessage;
 import net.minecraft.client.Minecraft;
@@ -16,7 +16,7 @@ import java.util.Set;
 /**
  * @author Ocelot
  */
-public class DownloaderClientLoginHandler implements IDownloaderLoginHandler
+public class DownloaderClientLoginHandler implements IDownloaderLoginClientHandler
 {
     @Override
     public void handleNotifyFileStatusMessage(NotifyFileStatusMessage msg, NetworkEvent.Context ctx)
@@ -24,7 +24,7 @@ public class DownloaderClientLoginHandler implements IDownloaderLoginHandler
         Set<DownloadableModFile> missingFiles = ModFileManager.getMissingFiles(msg.getFiles());
         ServerDownloaderMessages.LOGIN.reply(new NotifyFileStatusResponseMessage(), ctx);
         if (!missingFiles.isEmpty())
-            Minecraft.getInstance().setScreen(new DownloadModFilesConfirmationScreen(getUrl(ctx.getNetworkManager()), missingFiles));
+            Minecraft.getInstance().setScreen(new DownloadModFilesConfirmationScreen(getUrl(ctx.getNetworkManager()) + ":" + msg.getPort(), missingFiles));
         ctx.setPacketHandled(true);
     }
 

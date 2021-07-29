@@ -6,7 +6,7 @@ import net.minecraftforge.fml.network.NetworkEvent;
 /**
  * @author Ocelot
  */
-public interface IDownloaderLoginHandler
+public interface IDownloaderLoginClientHandler
 {
     /**
      * Notifies both the client and server of each other's mods and their mod file hashes.

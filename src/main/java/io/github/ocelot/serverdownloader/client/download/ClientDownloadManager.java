@@ -2,6 +2,7 @@ package io.github.ocelot.serverdownloader.client.download;
 
 import com.google.common.collect.Iterables;
 import com.mojang.datafixers.util.Pair;
+import io.github.ocelot.serverdownloader.client.ClientConfig;
 import io.github.ocelot.serverdownloader.common.UnitHelper;
 import io.github.ocelot.serverdownloader.common.download.DownloadableModFile;
 import net.minecraft.SharedConstants;
@@ -47,8 +48,8 @@ public class ClientDownloadManager
 {
     private static final Logger LOGGER = LogManager.getLogger();
     private static final Path CACHE_FOLDER = Paths.get(Minecraft.getInstance().gameDirectory.toURI()).resolve("server-mods");
-    private static final long MAX_DOWNLOAD = 100 * 1024 * 1024; // 100 MB TODO make this a config
-    private static final int DOWNLOAD_BUFFER_SIZE = 4096; // 4 KB TODO make this a config
+//    private static final long MAX_DOWNLOAD = 100 * 1024 * 1024; // 100 MB TODO make this a config
+//    private static final int DOWNLOAD_BUFFER_SIZE = 4096; // 4 KB TODO make this a config
 
     private static final Map<String, Pair<Path, Path>> REPLACED_MODS = new ConcurrentHashMap<>();
     private static final Set<Path> REMOVED_MODS = ConcurrentHashMap.newKeySet();
@@ -168,8 +169,8 @@ public class ClientDownloadManager
                 stream = pair.getSecond();
 
                 long fileSize = response.getFirstHeader("Content-Length") != null ? Long.parseLong(response.getFirstHeader("Content-Length").getValue()) : -1;
-                if (fileSize > MAX_DOWNLOAD)
-                    throw new IOException("Download for " + modFile.getVisualMods() + " is too large. Max Size: " + UnitHelper.abbreviateSize(MAX_DOWNLOAD) + ", Download Size: " + UnitHelper.abbreviateSize(fileSize));
+                if (fileSize > ClientConfig.INSTANCE.maxDownloadSize.get() * 1024 * 1024)
+                    throw new IOException("Download for " + modFile.getVisualMods() + " is too large. Max Size: " + UnitHelper.abbreviateSize(ClientConfig.INSTANCE.maxDownloadSize.get() * 1024 * 1024) + ", Download Size: " + UnitHelper.abbreviateSize(fileSize));
 
                 Path location = CACHE_FOLDER.resolve(getFileName(modFile.getModIds(), response));
 
@@ -211,7 +212,7 @@ public class ClientDownloadManager
                     try (ReadableByteChannel in = Channels.newChannel(pair.getSecond()); FileChannel out = FileChannel.open(location, StandardOpenOption.WRITE))
                     {
                         int readAmount;
-                        ByteBuffer buffer = ByteBuffer.allocate(DOWNLOAD_BUFFER_SIZE);
+                        ByteBuffer buffer = ByteBuffer.allocate(ClientConfig.INSTANCE.downloadBufferSize.get());
                         while ((readAmount = in.read(buffer)) != -1)
                         {
                             if (!FMLLoader.isProduction()) // Debug only
@@ -221,8 +222,8 @@ public class ClientDownloadManager
                                 throw new CancellationException("Download cancelled");
 
                             download.addBytesDownloaded(readAmount);
-                            if (download.getBytesDownloaded() > MAX_DOWNLOAD)
-                                throw new IOException("Download for " + modFile.getVisualMods() + " is too large. Max Size: " + UnitHelper.abbreviateSize(MAX_DOWNLOAD));
+                            if (download.getBytesDownloaded() > ClientConfig.INSTANCE.maxDownloadSize.get() * 1024 * 1024)
+                                throw new IOException("Download for " + modFile.getVisualMods() + " is too large. Max Size: " + UnitHelper.abbreviateSize(ClientConfig.INSTANCE.maxDownloadSize.get() * 1024 * 1024));
 
                             buffer.flip();
                             out.write(buffer);

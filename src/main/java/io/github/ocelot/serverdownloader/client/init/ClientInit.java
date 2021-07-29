@@ -1,6 +1,7 @@
 package io.github.ocelot.serverdownloader.client.init;
 
 import io.github.ocelot.serverdownloader.ServerDownloader;
+import io.github.ocelot.serverdownloader.client.ClientConfig;
 import io.github.ocelot.serverdownloader.common.download.ModFileManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.server.packs.resources.ReloadableResourceManager;
@@ -10,6 +11,7 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.client.event.ColorHandlerEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 
 import java.io.IOException;
@@ -67,7 +69,8 @@ public class ClientInit
     }
 
     @OnlyIn(Dist.CLIENT)
-    public static void setup(FMLClientSetupEvent event)
+    public static void initClient(FMLClientSetupEvent event)
     {
+        ClientConfig.init(ModLoadingContext.get());
     }
 }
