@@ -23,7 +23,10 @@ public class DownloadModFilesCompleteScreen extends Screen
     @Override
     protected void init()
     {
-        this.addButton(new Button(this.width / 2 - 100, (this.height - 24) / 2, 200, 20, new TranslatableComponent("menu.quit"), component -> this.getMinecraft().stop()));
+        this.addButton(new Button(this.width / 2 - 100, (this.height - 24) / 2, 200, 20, new TranslatableComponent("button." + ServerDownloader.MOD_ID + ".restart"), component ->
+        {
+            throw new RuntimeException("Simulated Crash");
+        }, (button, matrixStack, mouseX, mouseY) -> this.renderToolTip(matrixStack, this.font.split(new TranslatableComponent("button." + ServerDownloader.MOD_ID + ".restart.tooltip"), 200), mouseX, mouseY, this.font)));
         this.addButton(new Button(this.width / 2 - 100, (this.height + 24) / 2, 200, 20, new TranslatableComponent("gui.toTitle"), component -> this.getMinecraft().setScreen(new TitleScreen())));
     }
 
