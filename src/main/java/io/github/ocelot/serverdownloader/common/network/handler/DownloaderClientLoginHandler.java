@@ -39,6 +39,6 @@ public class DownloaderClientLoginHandler implements IDownloaderLoginClientHandl
         if (!(networkManager.getRemoteAddress() instanceof InetSocketAddress))
             throw new IllegalStateException("Failed to create URL to server");
         InetSocketAddress address = (InetSocketAddress) networkManager.getRemoteAddress();
-        return "http://" + address.getAddress().getHostAddress() + ":" + (address.getPort() + 1);
+        return "http://" + address.getAddress().getHostAddress();
     }
 }
