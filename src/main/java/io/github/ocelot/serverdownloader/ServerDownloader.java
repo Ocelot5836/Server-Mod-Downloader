@@ -1,9 +1,9 @@
 package io.github.ocelot.serverdownloader;
 
+import io.github.ocelot.serverdownloader.client.init.ClientInit;
 import io.github.ocelot.serverdownloader.common.download.ModFileManager;
 import io.github.ocelot.serverdownloader.common.network.ServerDownloaderMessages;
 import io.github.ocelot.serverdownloader.server.ModFileHttpServer;
-import io.github.ocelot.serverdownloader.client.init.ClientInit;
 import io.github.ocelot.serverdownloader.server.ServerConfig;
 import io.github.ocelot.sonar.Sonar;
 import net.minecraftforge.api.distmarker.Dist;

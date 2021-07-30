@@ -2,12 +2,9 @@ package io.github.ocelot.serverdownloader.mixin.server;
 
 import io.github.ocelot.serverdownloader.server.ServerConfig;
 import net.minecraft.network.Connection;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.PlayerList;
-import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -21,10 +18,6 @@ import java.net.SocketAddress;
 @Mixin(PlayerList.class)
 public class PlayerListMixin
 {
-    @Shadow
-    @Final
-    private MinecraftServer server;
-
     @Unique
     private Connection placingConnection;
 
