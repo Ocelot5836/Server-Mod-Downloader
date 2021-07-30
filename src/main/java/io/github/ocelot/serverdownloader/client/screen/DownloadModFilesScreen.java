@@ -108,12 +108,12 @@ public class DownloadModFilesScreen extends Screen
             if (future.isDone() && future.join() != null && future.join().getBytesDownloaded() > 0 && !future.join().isDone())
             {
                 String ids = String.join(", ", mod.getModIds());
-                this.font.draw(matrixStack, ids, (this.width - 182) / 2f - this.font.width(ids) - 4, Mth.fastFloor(this.height / 8F) + ((2 + i) * this.font.lineHeight), 11184810);
+                this.font.draw(matrixStack, ids, (this.width - 182) / 2f - this.font.width(ids) - 4, Mth.fastFloor(this.height / 8F) + ((4 + i) * this.font.lineHeight), 11184810);
 
                 this.getMinecraft().getTextureManager().bind(GUI_ICONS_LOCATION);
                 VertexConsumer builder = ShapeRenderer.begin();
-                ShapeRenderer.drawRectWithTexture(builder, matrixStack, Mth.fastFloor((this.width - 182) / 2F), Mth.fastFloor(this.height / 8F) + ((2 + i) * this.font.lineHeight) + 1, 0, 64, 182, 5);
-                ShapeRenderer.drawRectWithTexture(builder, matrixStack, Mth.fastFloor((this.width - 182) / 2F), Mth.fastFloor(this.height / 8F) + ((2 + i) * this.font.lineHeight) + 1, 0, 69, (float) (future.join().getDownloadPercentage() * 182), 5);
+                ShapeRenderer.drawRectWithTexture(builder, matrixStack, Mth.fastFloor((this.width - 182) / 2F), Mth.fastFloor(this.height / 8F) + ((4 + i) * this.font.lineHeight) + 1, 0, 64, 182, 5);
+                ShapeRenderer.drawRectWithTexture(builder, matrixStack, Mth.fastFloor((this.width - 182) / 2F), Mth.fastFloor(this.height / 8F) + ((4 + i) * this.font.lineHeight) + 1, 0, 69, (float) (future.join().getDownloadPercentage() * 182), 5);
                 ShapeRenderer.end();
 
                 if (mouseX >= (this.width - 182) / 2f && mouseX < (this.width + 182) / 2 && mouseY >= this.height / 8 + ((2 + i) * this.font.lineHeight) && mouseY < this.height / 8f + ((2 + i) * this.font.lineHeight) + 6)
@@ -134,29 +134,6 @@ public class DownloadModFilesScreen extends Screen
                 component.append(" / " + UnitHelper.abbreviateSize(download.getSize()));
             this.renderTooltip(matrixStack, component, mouseX, mouseY);
         }
-    }
-
-    @Override
-    public void removed()
-    {
-        // TODO delete all files if cancelled
-
-//        this.downloadingFiles.values().forEach(file->file.thenAcceptAsync(ClientDownload::cancel, HttpUtil.DOWNLOAD_EXECUTOR));
-
-//            LOGGER.debug("Deleting " + this.partialDownloadedFiles.size() + " partially downloaded files.");
-//            this.partialDownloadedFiles.forEach(path ->
-//            {
-//                if (!Files.exists(path))
-//                    return;
-//                try
-//                {
-//                    Files.delete(path);
-//                }
-//                catch (IOException e)
-//                {
-//                    LOGGER.error("Failed to delete file '" + path + "'", e);
-//                }
-//            });
     }
 
     @Override
