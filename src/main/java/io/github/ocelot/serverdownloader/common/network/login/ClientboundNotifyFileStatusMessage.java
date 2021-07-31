@@ -10,20 +10,30 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.fml.network.NetworkEvent;
 
+import javax.annotation.Nullable;
 import java.util.HashSet;
 import java.util.Set;
 
 /**
  * @author Ocelot
  */
-public class NotifyFileStatusMessage extends SimpleSonarLoginMessage<IDownloaderLoginClientHandler>
+public class ClientboundNotifyFileStatusMessage extends SimpleSonarLoginMessage<IDownloaderLoginClientHandler>
 {
     private final Set<DownloadableModFile> files;
+    private String resourcePack;
+    private String resourcePackHash;
     private int port;
 
-    public NotifyFileStatusMessage()
+    public ClientboundNotifyFileStatusMessage()
+    {
+        this.files = new HashSet<>();
+    }
+
+    public ClientboundNotifyFileStatusMessage(String resourcePack, @Nullable String resourcePackHash)
     {
         this.files = new HashSet<>(ModFileManager.getFiles());
+        this.resourcePack = resourcePack;
+        this.resourcePackHash = resourcePackHash;
         this.port = ServerConfig.INSTANCE.httpServerPort.get();
     }
 
@@ -46,6 +56,8 @@ public class NotifyFileStatusMessage extends SimpleSonarLoginMessage<IDownloader
                 throw new IllegalStateException("Failed to read server file from packet", e);
             }
         }
+        this.resourcePack = buf.readUtf();
+        this.resourcePackHash = buf.readUtf();
         this.port = buf.readVarInt();
     }
 
@@ -64,6 +76,8 @@ public class NotifyFileStatusMessage extends SimpleSonarLoginMessage<IDownloader
                 throw new IllegalStateException("Failed to write server file to packet", e);
             }
         }
+        buf.writeUtf(this.resourcePack);
+        buf.writeUtf(this.resourcePackHash);
         buf.writeVarInt(this.port);
     }
 
@@ -80,6 +94,24 @@ public class NotifyFileStatusMessage extends SimpleSonarLoginMessage<IDownloader
     public Set<DownloadableModFile> getFiles()
     {
         return files;
+    }
+
+    /**
+     * @return A link to the resource pack download
+     */
+    @OnlyIn(Dist.CLIENT)
+    public String getResourcePack()
+    {
+        return resourcePack;
+    }
+
+    /**
+     * @return The hash of the resource pack server-side
+     */
+    @OnlyIn(Dist.CLIENT)
+    public String getResourcePackHash()
+    {
+        return resourcePackHash;
     }
 
     /**

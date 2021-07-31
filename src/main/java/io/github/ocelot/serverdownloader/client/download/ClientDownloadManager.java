@@ -40,12 +40,14 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 
 /**
  * @author Ocelot
  */
 public class ClientDownloadManager
 {
+    private static final Pattern SHA1 = Pattern.compile("^[a-fA-F0-9]{40}$");
     private static final Logger LOGGER = LogManager.getLogger();
     private static final Path CACHE_FOLDER = Paths.get(Minecraft.getInstance().gameDirectory.toURI()).resolve("server-mods");
 //    private static final long MAX_DOWNLOAD = 100 * 1024 * 1024; // 100 MB TODO make this a config
@@ -157,7 +159,7 @@ public class ClientDownloadManager
         return String.join("-", modIds) + ".jar";
     }
 
-    public static CompletableFuture<ClientDownload> download(DownloadableModFile modFile, String url, Consumer<ClientDownload> completeListener)
+    public static CompletableFuture<ClientDownload> downloadMod(DownloadableModFile modFile, String url, Consumer<ClientDownload> completeListener)
     {
         return CompletableFuture.supplyAsync(() ->
         {
@@ -275,6 +277,123 @@ public class ClientDownloadManager
         }, HttpUtil.DOWNLOAD_EXECUTOR);
     }
 
+    public static CompletableFuture<ClientDownload> downloadResourcePack(String url, Consumer<ClientDownload> completeListener)
+    {
+        return CompletableFuture.supplyAsync(() ->
+        {
+            String fileName = DigestUtils.sha1Hex(url);
+            Path location = Minecraft.getInstance().gameDirectory.toPath().resolve("server-resource-packs").resolve(fileName);
+
+            InputStream stream = null;
+            try
+            {
+                if (location.getParent() != null && !Files.exists(location.getParent()))
+                    Files.createDirectories(location.getParent());
+                if (!Files.exists(location))
+                {
+                    Files.createFile(location);
+                }
+                else if (!Files.isRegularFile(location))
+                {
+                    deleteFile(location);
+                    Files.createFile(location);
+                }
+
+                Pair<HttpResponse, InputStream> pair = getStream(url);
+                HttpResponse response = pair.getFirst();
+                stream = pair.getSecond();
+
+                long fileSize = response.getFirstHeader("Content-Length") != null ? Long.parseLong(response.getFirstHeader("Content-Length").getValue()) : -1;
+                if (fileSize > 100 * 1024 * 1024)
+                    throw new IOException("Download for resource pack is too large. Max Size: " + UnitHelper.abbreviateSize(100 * 1024 * 1024) + ", Download Size: " + UnitHelper.abbreviateSize(fileSize));
+
+                ClientDownload download = new ClientDownload(fileSize);
+                // Perform the download
+                CompletableFuture.runAsync(() ->
+                {
+                    LOGGER.info("Started downloading server resources: " + location);
+                    try (ReadableByteChannel in = Channels.newChannel(pair.getSecond()); FileChannel out = FileChannel.open(location, StandardOpenOption.WRITE))
+                    {
+                        int readAmount;
+                        ByteBuffer buffer = ByteBuffer.allocate(ClientConfig.INSTANCE.downloadBufferSize.get());
+                        while ((readAmount = in.read(buffer)) != -1)
+                        {
+                            if (!FMLLoader.isProduction()) // Debug only
+                                Thread.sleep(50);
+
+                            if (download.isCancelled())
+                                throw new CancellationException("Download cancelled");
+
+                            download.addBytesDownloaded(readAmount);
+                            if (download.getBytesDownloaded() > 100 * 1024 * 1024)
+                                throw new IOException("Download for " + url + " is too large. Max Size: " + UnitHelper.abbreviateSize(100 * 1024 * 1024));
+
+                            buffer.flip();
+                            out.write(buffer);
+                            buffer.clear();
+                        }
+
+                        download.completeSuccessfully();
+                        Minecraft.getInstance().execute(() -> completeListener.accept(download));
+                    }
+                    catch (CancellationException e)
+                    {
+                        LOGGER.info("Cancelling download for server resources: " + url);
+                        deleteFile(location);
+                        download.completeCancelled();
+                        Minecraft.getInstance().execute(() -> completeListener.accept(download));
+                    }
+                    catch (Exception e)
+                    {
+                        deleteFile(location);
+                        throw new CompletionException("Failed to download server resources: " + url, e);
+                    }
+                }, HttpUtil.DOWNLOAD_EXECUTOR).exceptionally(e ->
+                {
+                    if (e != null)
+                    {
+                        e.printStackTrace();
+                        download.completeExceptionally(e);
+                        Minecraft.getInstance().execute(() -> completeListener.accept(download));
+                    }
+                    return null;
+                });
+                return download;
+            }
+            catch (Exception e)
+            {
+                IOUtils.closeQuietly(stream);
+                ClientDownload download = new ClientDownload(-1);
+                Minecraft.getInstance().execute(() ->
+                {
+                    download.completeExceptionally(new CompletionException("Failed to request server resources: " + url, e));
+                    Minecraft.getInstance().execute(() -> completeListener.accept(download));
+                });
+                return download;
+            }
+        }, HttpUtil.DOWNLOAD_EXECUTOR);
+    }
+
+    public static boolean isResourcePackDownloaded(String url, String hash)
+    {
+        String fileName = DigestUtils.sha1Hex(url);
+        String fileHash = SHA1.matcher(hash).matches() ? hash : "";
+        Path location = Minecraft.getInstance().gameDirectory.toPath().resolve("server-resource-packs").resolve(fileName);
+
+        if (Files.exists(location))
+        {
+            try (InputStream stream = new FileInputStream(location.toFile()))
+            {
+                return DigestUtils.sha1Hex(stream).equals(fileHash);
+            }
+            catch (Exception ignored)
+            {
+            }
+        }
+
+        return false;
+    }
+
     private static void deleteFile(Path location)
     {
         try
@@ -296,6 +415,7 @@ public class ClientDownloadManager
             request.setHeader("X-Minecraft-UUID", Minecraft.getInstance().getUser().getUuid());
             request.setHeader("X-Minecraft-Version", SharedConstants.getCurrentVersion().getName());
             request.setHeader("X-Minecraft-Version-ID", SharedConstants.getCurrentVersion().getId());
+            request.setHeader("X-Minecraft-Pack-Format", String.valueOf(SharedConstants.getCurrentVersion().getPackVersion()));
         }).build();
 
         CloseableHttpResponse response = client.execute(get);

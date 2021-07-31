@@ -4,19 +4,19 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import io.github.ocelot.serverdownloader.ServerDownloader;
 import io.github.ocelot.serverdownloader.client.download.ClientDownload;
-import io.github.ocelot.serverdownloader.client.download.ClientDownloadManager;
 import io.github.ocelot.serverdownloader.common.UnitHelper;
-import io.github.ocelot.serverdownloader.common.download.DownloadableModFile;
+import io.github.ocelot.serverdownloader.common.download.DownloadableFile;
 import io.github.ocelot.sonar.client.render.ShapeRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.toasts.SystemToast;
+import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.TextComponent;
-import net.minecraft.network.chat.TranslatableComponent;
+import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
+import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.resources.language.I18n;
+import net.minecraft.network.chat.*;
 import net.minecraft.util.HttpUtil;
 import net.minecraft.util.Mth;
 
@@ -31,26 +31,35 @@ import java.util.concurrent.TimeUnit;
  */
 public class DownloadModFilesScreen extends Screen
 {
-    private final Map<DownloadableModFile, CompletableFuture<ClientDownload>> downloadingFiles;
+    private final Map<DownloadableFile, CompletableFuture<ClientDownload>> downloadingFiles;
     private final long startTime;
     private int downloadedFiles;
     private boolean cancelled;
 
     private Button cancelButton;
 
-    public DownloadModFilesScreen(String httpServer, Set<DownloadableModFile> missingFiles)
+    public DownloadModFilesScreen(ServerData server, String httpServer, Set<DownloadableFile> missingFiles)
     {
         super(new TranslatableComponent("screen." + ServerDownloader.MOD_ID + ".download", missingFiles.size()));
         this.downloadingFiles = new HashMap<>();
         this.startTime = System.currentTimeMillis();
         this.downloadedFiles = 0;
         this.cancelled = false;
-        missingFiles.forEach(modFile -> this.downloadingFiles.put(modFile, ClientDownloadManager.download(modFile, httpServer + "/download?mod=" + modFile.getModIds()[0], download ->
+
+        boolean restartRequired = missingFiles.stream().anyMatch(DownloadableFile::needsRestart);
+        missingFiles.forEach(modFile -> this.downloadingFiles.put(modFile, modFile.createDownload(httpServer, download ->
         {
             this.downloadedFiles++;
             if (!this.cancelled && this.downloadingFiles.values().stream().allMatch(future -> future.isDone() && future.join().isDone()))
             {
-                Minecraft.getInstance().setScreen(new DownloadModFilesCompleteScreen(this.startTime, System.currentTimeMillis(), this.downloadedFiles));
+                if (restartRequired)
+                {
+                    Minecraft.getInstance().setScreen(new DownloadModFilesCompleteScreen(this.startTime, System.currentTimeMillis(), this.downloadedFiles));
+                }
+                else
+                {
+                    Minecraft.getInstance().setScreen(new ConnectScreen(this, Minecraft.getInstance(), server));
+                }
             }
         }).handleAsync((download, exception) ->
         {
@@ -77,13 +86,13 @@ public class DownloadModFilesScreen extends Screen
             if (e != null)
                 e.printStackTrace();
             return null;
-        }).thenRunAsync(() -> this.getMinecraft().setScreen(new TitleScreen()), this.getMinecraft());
+        }).thenRunAsync(() -> this.getMinecraft().setScreen(new JoinMultiplayerScreen(new TitleScreen())), this.getMinecraft());
     }
 
     @Override
     protected void init()
     {
-        this.addButton(this.cancelButton = new Button(this.width / 2 - 100, (this.height - 24) - this.height / 8, 200, 20, new TranslatableComponent("gui.cancel"), component -> this.cancel()));
+        this.addButton(this.cancelButton = new Button(this.width / 2 - 100, (this.height - 24) - this.height / 8, 200, 20, CommonComponents.GUI_CANCEL, component -> this.cancel()));
     }
 
     @Override
@@ -99,16 +108,16 @@ public class DownloadModFilesScreen extends Screen
         this.font.draw(matrixStack, time, Mth.fastFloor((this.width - this.font.width(time)) / 2F), (this.height - 24) - Mth.fastFloor(this.height / 8F) + 26, 11184810);
         this.font.draw(matrixStack, count, Mth.fastFloor((this.width - this.font.width(count)) / 2F), (this.height - 24) - Mth.fastFloor(this.height / 8F) + 30 + this.font.lineHeight, 11184810);
 
-        Map.Entry<DownloadableModFile, CompletableFuture<ClientDownload>> hoveredEntry = null;
+        ClientDownload hoveredDownload = null;
         int i = 0;
-        for (Map.Entry<DownloadableModFile, CompletableFuture<ClientDownload>> entry : this.downloadingFiles.entrySet())
+        for (Map.Entry<DownloadableFile, CompletableFuture<ClientDownload>> entry : this.downloadingFiles.entrySet())
         {
-            DownloadableModFile mod = entry.getKey();
+            DownloadableFile file = entry.getKey();
             CompletableFuture<ClientDownload> future = entry.getValue();
             if (future.isDone() && future.join() != null && future.join().getBytesDownloaded() > 0 && !future.join().isDone())
             {
-                String ids = String.join(", ", mod.getModIds());
-                this.font.draw(matrixStack, ids, (this.width - 182) / 2f - this.font.width(ids) - 4, Mth.fastFloor(this.height / 8F) + ((4 + i) * this.font.lineHeight), 11184810);
+                Component displayName = file.getDisplayName();
+                this.font.draw(matrixStack, displayName, (this.width - 182) / 2f - this.font.width(displayName) - 4, Mth.fastFloor(this.height / 8F) + ((4 + i) * this.font.lineHeight), 11184810);
 
                 this.getMinecraft().getTextureManager().bind(GUI_ICONS_LOCATION);
                 VertexConsumer builder = ShapeRenderer.begin();
@@ -116,9 +125,9 @@ public class DownloadModFilesScreen extends Screen
                 ShapeRenderer.drawRectWithTexture(builder, matrixStack, Mth.fastFloor((this.width - 182) / 2F), Mth.fastFloor(this.height / 8F) + ((4 + i) * this.font.lineHeight) + 1, 0, 69, (float) (future.join().getDownloadPercentage() * 182), 5);
                 ShapeRenderer.end();
 
-                if (mouseX >= (this.width - 182) / 2f && mouseX < (this.width + 182) / 2 && mouseY >= this.height / 8 + ((2 + i) * this.font.lineHeight) && mouseY < this.height / 8f + ((2 + i) * this.font.lineHeight) + 6)
+                if (mouseX >= (this.width - 182) / 2f && mouseX < (this.width + 182) / 2 && mouseY >= Mth.fastFloor(this.height / 8F) + ((4 + i) * this.font.lineHeight) + 1 && mouseY < Mth.fastFloor(this.height / 8F) + ((4 + i) * this.font.lineHeight) + 7)
                 {
-                    hoveredEntry = entry;
+                    hoveredDownload = future.join();
                 }
                 i++;
             }
@@ -126,12 +135,11 @@ public class DownloadModFilesScreen extends Screen
 
         super.render(matrixStack, mouseX, mouseY, partialTicks);
 
-        if (hoveredEntry != null)
+        if (hoveredDownload != null)
         {
-            ClientDownload download = hoveredEntry.getValue().join();
-            MutableComponent component = new TextComponent(UnitHelper.abbreviateSize(download.getBytesDownloaded()));
-            if (download.getSize() != -1)
-                component.append(" / " + UnitHelper.abbreviateSize(download.getSize()));
+            MutableComponent component = new TextComponent(UnitHelper.abbreviateSize(hoveredDownload.getBytesDownloaded()));
+            if (hoveredDownload.getSize() != -1)
+                component.append(" / " + UnitHelper.abbreviateSize(hoveredDownload.getSize()));
             this.renderTooltip(matrixStack, component, mouseX, mouseY);
         }
     }

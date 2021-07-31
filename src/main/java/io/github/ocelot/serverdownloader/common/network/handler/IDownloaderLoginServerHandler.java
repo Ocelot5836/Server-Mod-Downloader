@@ -1,6 +1,6 @@
 package io.github.ocelot.serverdownloader.common.network.handler;
 
-import io.github.ocelot.serverdownloader.common.network.login.NotifyFileStatusResponseMessage;
+import io.github.ocelot.serverdownloader.common.network.login.ServerboundNotifyFileStatusResponseMessage;
 import net.minecraftforge.fml.network.NetworkEvent;
 
 /**
@@ -14,5 +14,5 @@ public interface IDownloaderLoginServerHandler
      * @param msg The message instance
      * @param ctx The context of the message
      */
-    void handleNotifyFileStatusResponseMessage(NotifyFileStatusResponseMessage msg, NetworkEvent.Context ctx);
+    void handleNotifyFileStatusResponseMessage(ServerboundNotifyFileStatusResponseMessage msg, NetworkEvent.Context ctx);
 }

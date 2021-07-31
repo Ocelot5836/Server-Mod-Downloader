@@ -3,14 +3,14 @@
   "language.region": "United States",
   "language.code": "en_us",
 
-  "screen.serverdownloader.confirm_download": "%s mod(s) need to be downloaded to join the server",
+  "screen.serverdownloader.confirm_download": "%s files need to be downloaded to join the server",
   "screen.serverdownloader.download": "Downloading Files...",
   "screen.serverdownloader.download.count": "Downloaded %s/%s Files",
   "screen.serverdownloader.complete_download": "Downloaded %s Files in %s. The game must be restarted to join the server.",
   "button.serverdownloader.download": "Download",
   "button.serverdownloader.restart": "Restart Game",
   "button.serverdownloader.restart.tooltip": "Pressing this will cause a fake crash so the launcher will re-open. This button is supposed to crash the game.",
-  "toast.serverdownloader.download_failure": "Failed to download Mods",
+  "toast.serverdownloader.download_failure": "Failed to download Files",
 
   "config.serverdownloader.maxDownloadSize": "Max Download Size (MiB)",
   "config.serverdownloader.downloadBufferSize": "Download Buffer Size (Bytes)",

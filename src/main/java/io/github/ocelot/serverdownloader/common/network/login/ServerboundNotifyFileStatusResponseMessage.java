@@ -15,11 +15,11 @@ import java.util.Set;
 /**
  * @author Ocelot
  */
-public class NotifyFileStatusResponseMessage extends SimpleSonarLoginMessage<IDownloaderLoginServerHandler>
+public class ServerboundNotifyFileStatusResponseMessage extends SimpleSonarLoginMessage<IDownloaderLoginServerHandler>
 {
     private final Set<DownloadableModFile> files;
 
-    public NotifyFileStatusResponseMessage()
+    public ServerboundNotifyFileStatusResponseMessage()
     {
         this.files = new HashSet<>(ModFileManager.getFiles());
     }

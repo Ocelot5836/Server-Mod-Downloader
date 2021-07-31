@@ -60,7 +60,7 @@ public class ModFileManager
      * @return The files the client failed to have
      */
     @OnlyIn(Dist.CLIENT)
-    public static Set<DownloadableModFile> getMissingFiles(Set<DownloadableModFile> serverFiles)
+    public static Set<DownloadableFile> getMissingFiles(Set<DownloadableModFile> serverFiles)
     {
         return serverFiles.stream().filter(serverFile -> !MOD_FILES.containsValue(serverFile)).collect(Collectors.toSet());
     }

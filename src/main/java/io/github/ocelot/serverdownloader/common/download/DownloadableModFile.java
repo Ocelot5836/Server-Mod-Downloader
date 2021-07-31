@@ -2,16 +2,24 @@ package io.github.ocelot.serverdownloader.common.download;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import io.github.ocelot.serverdownloader.client.download.ClientDownload;
+import io.github.ocelot.serverdownloader.client.download.ClientDownloadManager;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TextComponent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 /**
  * <p>A file that can be downloaded from the server.</p>
  *
  * @author Ocelot
  */
-public class DownloadableModFile
+public class DownloadableModFile implements DownloadableFile
 {
     public static final Codec<DownloadableModFile> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             Codec.STRING.listOf().fieldOf("mod_ids").forGetter(file -> Arrays.asList(file.getModIds())),
@@ -49,6 +57,24 @@ public class DownloadableModFile
     public String getHash()
     {
         return hash;
+    }
+
+    @Override
+    public CompletableFuture<ClientDownload> createDownload(String httpServer, Consumer<ClientDownload> completeListener)
+    {
+        return ClientDownloadManager.downloadMod(this, httpServer + "/download?mod=" + this.modIds[0], completeListener);
+    }
+
+    @Override
+    public Component getDisplayName()
+    {
+        return new TextComponent(this.getVisualMods());
+    }
+
+    @Override
+    public boolean needsRestart()
+    {
+        return true;
     }
 
     @Override
