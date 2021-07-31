@@ -18,7 +18,9 @@ import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.ServerList;
 import net.minecraft.network.Connection;
+import net.minecraft.network.chat.TextComponent;
 import net.minecraft.network.chat.TranslatableComponent;
+import net.minecraftforge.fml.network.FMLNetworkConstants;
 import net.minecraftforge.fml.network.NetworkEvent;
 
 import java.net.InetSocketAddress;
@@ -35,6 +37,12 @@ public class DownloaderClientLoginHandler implements IDownloaderLoginClientHandl
     @Override
     public void handleNotifyFileStatusMessage(ClientboundNotifyFileStatusMessage msg, NetworkEvent.Context ctx)
     {
+        if (!ServerDownloaderMessages.VERSION.equals(msg.getNetVersion()))
+        {
+            ctx.getNetworkManager().disconnect(new TextComponent("This modded server is not network compatible with your modded client. Please verify your Server Downloader version closely matches the server. Got net version "+ msg.getNetVersion() + " this server is net version "+ ServerDownloaderMessages.VERSION));
+            return;
+        }
+
         List<DownloadableFile> missingFiles = new ArrayList<>(ModFileManager.getMissingFiles(msg.getFiles()));
         String httpServer = msg.getProtocol() + getUrl(ctx.getNetworkManager()) + ":" + msg.getPort();
         ServerData server = Minecraft.getInstance().getCurrentServer();

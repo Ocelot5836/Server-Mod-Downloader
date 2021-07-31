@@ -2,6 +2,7 @@ package io.github.ocelot.serverdownloader.common.network.login;
 
 import io.github.ocelot.serverdownloader.common.download.DownloadableModFile;
 import io.github.ocelot.serverdownloader.common.download.ModFileManager;
+import io.github.ocelot.serverdownloader.common.network.ServerDownloaderMessages;
 import io.github.ocelot.serverdownloader.common.network.handler.IDownloaderLoginClientHandler;
 import io.github.ocelot.serverdownloader.server.ServerConfig;
 import io.github.ocelot.sonar.common.network.message.SimpleSonarLoginMessage;
@@ -20,6 +21,7 @@ import java.util.Set;
 public class ClientboundNotifyFileStatusMessage extends SimpleSonarLoginMessage<IDownloaderLoginClientHandler>
 {
     private final Set<DownloadableModFile> files;
+    private String netVersion;
     private String resourcePack;
     private String resourcePackHash;
     private boolean secure;
@@ -33,6 +35,7 @@ public class ClientboundNotifyFileStatusMessage extends SimpleSonarLoginMessage<
     public ClientboundNotifyFileStatusMessage(String resourcePack, @Nullable String resourcePackHash, boolean secure)
     {
         this.files = new HashSet<>(ModFileManager.getFiles());
+        this.netVersion = ServerDownloaderMessages.VERSION;
         this.resourcePack = resourcePack;
         this.resourcePackHash = resourcePackHash;
         this.secure = secure;
@@ -58,6 +61,7 @@ public class ClientboundNotifyFileStatusMessage extends SimpleSonarLoginMessage<
                 throw new IllegalStateException("Failed to read server file from packet", e);
             }
         }
+        this.netVersion = buf.readUtf();
         this.resourcePack = buf.readUtf();
         this.resourcePackHash = buf.readUtf();
         this.secure = buf.readBoolean();
@@ -79,6 +83,7 @@ public class ClientboundNotifyFileStatusMessage extends SimpleSonarLoginMessage<
                 throw new IllegalStateException("Failed to write server file to packet", e);
             }
         }
+        buf.writeUtf(this.netVersion);
         buf.writeUtf(this.resourcePack);
         buf.writeUtf(this.resourcePackHash);
         buf.writeBoolean(this.secure);
@@ -89,6 +94,15 @@ public class ClientboundNotifyFileStatusMessage extends SimpleSonarLoginMessage<
     public void processPacket(IDownloaderLoginClientHandler handler, NetworkEvent.Context ctx)
     {
         handler.handleNotifyFileStatusMessage(this, ctx);
+    }
+
+    /**
+     * @return The version of the server side network
+     */
+    @OnlyIn(Dist.CLIENT)
+    public String getNetVersion()
+    {
+        return netVersion;
     }
 
     /**
