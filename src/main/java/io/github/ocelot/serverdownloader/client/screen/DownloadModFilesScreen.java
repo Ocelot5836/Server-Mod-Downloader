@@ -9,13 +9,12 @@ import io.github.ocelot.serverdownloader.common.download.DownloadableFile;
 import io.github.ocelot.sonar.client.render.ShapeRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.toasts.SystemToast;
 import net.minecraft.client.gui.screens.ConnectScreen;
+import net.minecraft.client.gui.screens.DisconnectedScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
 import net.minecraft.client.multiplayer.ServerData;
-import net.minecraft.client.resources.language.I18n;
 import net.minecraft.network.chat.*;
 import net.minecraft.util.HttpUtil;
 import net.minecraft.util.Mth;
@@ -35,6 +34,7 @@ public class DownloadModFilesScreen extends Screen
     private final long startTime;
     private int downloadedFiles;
     private boolean cancelled;
+    private Throwable error;
 
     private Button cancelButton;
 
@@ -67,7 +67,8 @@ public class DownloadModFilesScreen extends Screen
             {
                 exception.printStackTrace();
                 this.cancel();
-                SystemToast.multiline(Minecraft.getInstance(), SystemToast.SystemToastIds.PACK_COPY_FAILURE, new TranslatableComponent("toast." + ServerDownloader.MOD_ID + ".download_failure"), new TextComponent(exception.getMessage()));
+                if (this.error == null)
+                    this.error = exception.getCause();
             }
             return download;
         }, Minecraft.getInstance())));
@@ -86,7 +87,17 @@ public class DownloadModFilesScreen extends Screen
             if (e != null)
                 e.printStackTrace();
             return null;
-        }).thenRunAsync(() -> this.getMinecraft().setScreen(new JoinMultiplayerScreen(new TitleScreen())), this.getMinecraft());
+        }).thenRunAsync(() ->
+        {
+            if (this.error != null)
+            {
+                this.getMinecraft().setScreen(new DisconnectedScreen(new JoinMultiplayerScreen(new TitleScreen()), new TranslatableComponent("error." + ServerDownloader.MOD_ID + ".download_failure"), new TextComponent(this.error.getMessage())));
+            }
+            else
+            {
+                this.getMinecraft().setScreen(new JoinMultiplayerScreen(new TitleScreen()));
+            }
+        }, this.getMinecraft());
     }
 
     @Override

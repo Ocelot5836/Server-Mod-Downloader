@@ -266,13 +266,7 @@ public class ClientDownloadManager
             catch (Exception e)
             {
                 IOUtils.closeQuietly(stream);
-                ClientDownload download = new ClientDownload(-1);
-                Minecraft.getInstance().execute(() ->
-                {
-                    download.completeExceptionally(new CompletionException("Failed to request mod file: " + modFile.getVisualMods(), e));
-                    Minecraft.getInstance().execute(() -> completeListener.accept(download));
-                });
-                return download;
+                throw new CompletionException("Failed to request mod file: " + url, e);
             }
         }, HttpUtil.DOWNLOAD_EXECUTOR);
     }
@@ -304,8 +298,8 @@ public class ClientDownloadManager
                 stream = pair.getSecond();
 
                 long fileSize = response.getFirstHeader("Content-Length") != null ? Long.parseLong(response.getFirstHeader("Content-Length").getValue()) : -1;
-                if (fileSize > 100 * 1024 * 1024)
-                    throw new IOException("Download for resource pack is too large. Max Size: " + UnitHelper.abbreviateSize(100 * 1024 * 1024) + ", Download Size: " + UnitHelper.abbreviateSize(fileSize));
+                if (fileSize > ClientConfig.INSTANCE.maxDownloadSize.get() * 1024 * 1024)
+                    throw new IOException("Download for resource pack is too large. Max Size: " + UnitHelper.abbreviateSize(ClientConfig.INSTANCE.maxDownloadSize.get() * 1024 * 1024) + ", Download Size: " + UnitHelper.abbreviateSize(fileSize));
 
                 ClientDownload download = new ClientDownload(fileSize);
                 // Perform the download
@@ -318,15 +312,12 @@ public class ClientDownloadManager
                         ByteBuffer buffer = ByteBuffer.allocate(ClientConfig.INSTANCE.downloadBufferSize.get());
                         while ((readAmount = in.read(buffer)) != -1)
                         {
-                            if (!FMLLoader.isProduction()) // Debug only
-                                Thread.sleep(50);
-
                             if (download.isCancelled())
                                 throw new CancellationException("Download cancelled");
 
                             download.addBytesDownloaded(readAmount);
-                            if (download.getBytesDownloaded() > 100 * 1024 * 1024)
-                                throw new IOException("Download for " + url + " is too large. Max Size: " + UnitHelper.abbreviateSize(100 * 1024 * 1024));
+                            if (download.getBytesDownloaded() > ClientConfig.INSTANCE.maxDownloadSize.get() * 1024 * 1024)
+                                throw new IOException("Download for " + url + " is too large. Max Size: " + UnitHelper.abbreviateSize(ClientConfig.INSTANCE.maxDownloadSize.get() * 1024 * 1024));
 
                             buffer.flip();
                             out.write(buffer);
@@ -363,13 +354,7 @@ public class ClientDownloadManager
             catch (Exception e)
             {
                 IOUtils.closeQuietly(stream);
-                ClientDownload download = new ClientDownload(-1);
-                Minecraft.getInstance().execute(() ->
-                {
-                    download.completeExceptionally(new CompletionException("Failed to request server resources: " + url, e));
-                    Minecraft.getInstance().execute(() -> completeListener.accept(download));
-                });
-                return download;
+                throw new CompletionException("Failed to request server resources: " + url, e);
             }
         }, HttpUtil.DOWNLOAD_EXECUTOR);
     }

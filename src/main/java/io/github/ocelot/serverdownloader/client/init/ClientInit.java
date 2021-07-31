@@ -71,6 +71,5 @@ public class ClientInit
     @OnlyIn(Dist.CLIENT)
     public static void initClient(FMLClientSetupEvent event)
     {
-        ClientConfig.init(ModLoadingContext.get());
     }
 }

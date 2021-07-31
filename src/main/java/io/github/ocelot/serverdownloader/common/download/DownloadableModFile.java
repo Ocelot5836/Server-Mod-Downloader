@@ -15,8 +15,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 /**
- * <p>A file that can be downloaded from the server.</p>
- *
  * @author Ocelot
  */
 public class DownloadableModFile implements DownloadableFile

@@ -1,5 +1,6 @@
 package io.github.ocelot.serverdownloader;
 
+import io.github.ocelot.serverdownloader.client.ClientConfig;
 import io.github.ocelot.serverdownloader.client.init.ClientInit;
 import io.github.ocelot.serverdownloader.common.download.ModFileManager;
 import io.github.ocelot.serverdownloader.common.network.ServerDownloaderMessages;
@@ -39,6 +40,8 @@ public class ServerDownloader
             ClientInit.init(modBus);
             modBus.addListener(ClientInit::initClient);
         });
+        ClientConfig.init(ModLoadingContext.get());
+        ServerConfig.init(ModLoadingContext.get());
     }
 
     private void init(FMLCommonSetupEvent event)
@@ -48,7 +51,6 @@ public class ServerDownloader
 
     private void initDedicatedServer(FMLDedicatedServerSetupEvent event)
     {
-        ServerConfig.init(ModLoadingContext.get());
     }
 
     @SubscribeEvent

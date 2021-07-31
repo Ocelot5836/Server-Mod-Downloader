@@ -10,7 +10,7 @@
   "button.serverdownloader.download": "Download",
   "button.serverdownloader.restart": "Restart Game",
   "button.serverdownloader.restart.tooltip": "Pressing this will cause a fake crash so the launcher will re-open. This button is supposed to crash the game.",
-  "toast.serverdownloader.download_failure": "Failed to download Files",
+  "error.serverdownloader.download_failure": "Failed to download Files",
 
   "config.serverdownloader.maxDownloadSize": "Max Download Size (MiB)",
   "config.serverdownloader.downloadBufferSize": "Download Buffer Size (Bytes)",
