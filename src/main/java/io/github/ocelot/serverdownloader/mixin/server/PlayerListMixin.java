@@ -1,5 +1,6 @@
 package io.github.ocelot.serverdownloader.mixin.server;
 
+import io.github.ocelot.serverdownloader.server.ModFileHttpServer;
 import io.github.ocelot.serverdownloader.server.ServerConfig;
 import net.minecraft.network.Connection;
 import net.minecraft.server.level.ServerPlayer;
@@ -31,12 +32,12 @@ public class PlayerListMixin
     public void modifyResources(Args args)
     {
         String resourcePack = args.get(0);
-        if (resourcePack.startsWith("level://"))
+        if (ModFileHttpServer.isRunning() && resourcePack.startsWith("level://"))
         {
             SocketAddress address = this.placingConnection.channel().localAddress();
             if (!(address instanceof InetSocketAddress))
                 return;
-            args.set(0, "http://" + ((InetSocketAddress) address).getAddress().getHostAddress() + ":" + ServerConfig.INSTANCE.httpServerPort.get() + "/resources.zip");
+            args.set(0, (ModFileHttpServer.isSecure() ? "https://" : "http://") + ((InetSocketAddress) address).getAddress().getHostAddress() + ":" + ServerConfig.INSTANCE.httpServerPort.get() + "/resources.zip");
         }
     }
 }

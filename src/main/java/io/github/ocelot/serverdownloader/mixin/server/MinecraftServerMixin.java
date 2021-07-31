@@ -33,18 +33,4 @@ public class MinecraftServerMixin
             return hash;
         }
     }
-
-//    @ModifyArgs(method = "detectBundledResources", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/MinecraftServer;setResourcePack(Ljava/lang/String;Ljava/lang/String;)V"), index = 1)
-//    public void modifyResourcesHash(Args args)
-//    {
-//        try (InputStream input = new FileInputStream(this.storageSource.getLevelPath(LevelResource.MAP_RESOURCE_FILE).toFile()))
-//        {
-//            args.set(1, DigestUtils.sha1Hex(input));
-//        }
-//        catch (Exception e)
-//        {
-//            e.printStackTrace();
-//            return "";
-//        }
-//    }
 }

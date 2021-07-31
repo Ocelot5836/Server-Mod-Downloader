@@ -8,6 +8,7 @@ import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpResponseEncoder;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
+import io.netty.handler.ssl.SslHandler;
 import net.minecraft.Util;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.storage.LevelStorageSource;
@@ -19,6 +20,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.imageio.ImageIO;
+import javax.net.ssl.SSLContext;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
@@ -47,6 +49,7 @@ public class ModFileHttpServer
     private static Thread serverThread;
     private static volatile Channel channel;
     private static volatile boolean running;
+    private static CompletableFuture<Boolean> secure;
 
     /**
      * Opens a new HTTP server for the specified server.
@@ -62,8 +65,21 @@ public class ModFileHttpServer
         }
         channel = null;
         running = true;
+        secure = new CompletableFuture<>();
         serverThread = new Thread(() ->
         {
+            SSLContext ssl = null;
+            try
+            {
+                ssl = ServerHttpsLoader.load();
+            }
+            catch (Exception e)
+            {
+                LOGGER.error("Error loading SSL certificate", e);
+            }
+
+            secure.complete(ssl != null);
+            SSLContext context = ssl;
             EventLoopGroup bossGroup = new NioEventLoopGroup();
             EventLoopGroup workerGroup = new NioEventLoopGroup();
             try
@@ -78,13 +94,22 @@ public class ModFileHttpServer
                             protected void initChannel(Channel ch)
                             {
                                 ChannelPipeline p = ch.pipeline();
+                                if (context != null)
+                                    p.addLast("ssl", new SslHandler(context.createSSLEngine()));
                                 p.addLast(new HttpRequestDecoder());
                                 p.addLast(new HttpResponseEncoder());
                                 p.addLast(new ServerHttpHandler(new Cache(server)));
                             }
                         });
-                channel = bootstrap.bind(server.getPort() + 1).sync().channel();
-                LOGGER.info("Opened HTTP server on port " + (server.getPort() + 1));
+                channel = bootstrap.bind(ServerConfig.INSTANCE.httpServerPort.get()).sync().channel();
+                if (context != null)
+                {
+                    LOGGER.info("Opened HTTPS server on port " + ServerConfig.INSTANCE.httpServerPort.get());
+                }
+                else
+                {
+                    LOGGER.warn("Opened HTTP (Insecure) server on port " + ServerConfig.INSTANCE.httpServerPort.get() + ". Consider upgrading to HTTPS with an SSL certificate.");
+                }
                 channel.closeFuture().sync();
             }
             catch (Exception e)
@@ -125,14 +150,23 @@ public class ModFileHttpServer
         LOGGER.info("Shut down HTTP server");
         serverThread = null;
         channel = null;
+        secure = null;
     }
 
     /**
-     * @return Whether or not the server thread is running
+     * @return Whether the server thread is running
      */
     public static boolean isRunning()
     {
         return running;
+    }
+
+    /**
+     * @return Whether the running server is secure
+     */
+    public static boolean isSecure()
+    {
+        return running && secure.join();
     }
 
     private static class Cache implements HttpCache

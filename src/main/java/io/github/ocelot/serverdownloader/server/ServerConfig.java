@@ -29,7 +29,8 @@ public class ServerConfig
     {
         builder.comment("Server Mod Downloader Server Config");
         this.httpServerPort = builder
-                .comment("The port to open the HTTP server on. This is required in order to send mods to clients!")
+                .worldRestart()
+                .comment("The port to open the HTTP server on. This is required to be an open port to send mods to clients!")
                 .translation("config." + ServerDownloader.MOD_ID + ".httpServerPort")
                 .defineInRange("httpServerPort", 25566, 1, 65535);
     }

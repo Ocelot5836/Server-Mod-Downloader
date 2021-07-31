@@ -26,7 +26,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 /**
  * @author Ocelot
@@ -37,9 +36,9 @@ public class DownloaderClientLoginHandler implements IDownloaderLoginClientHandl
     public void handleNotifyFileStatusMessage(ClientboundNotifyFileStatusMessage msg, NetworkEvent.Context ctx)
     {
         List<DownloadableFile> missingFiles = new ArrayList<>(ModFileManager.getMissingFiles(msg.getFiles()));
-        String httpServer = getUrl(ctx.getNetworkManager()) + ":" + msg.getPort();
+        String httpServer = msg.getProtocol() + getUrl(ctx.getNetworkManager()) + ":" + msg.getPort();
         ServerData server = Minecraft.getInstance().getCurrentServer();
-        String resourcePack = msg.getResourcePack().startsWith("level://") ? "http://" + ((InetSocketAddress) ctx.getNetworkManager().getRemoteAddress()).getAddress().getHostAddress() + ":" + msg.getPort() + "/resources.zip" : msg.getResourcePack();
+        String resourcePack = msg.getResourcePack().startsWith("level://") ? msg.getProtocol() + "://" + ((InetSocketAddress) ctx.getNetworkManager().getRemoteAddress()).getAddress().getHostAddress() + ":" + msg.getPort() + "/resources.zip" : msg.getResourcePack();
 
         if (!StringUtil.isNullOrEmpty(msg.getResourcePack()) && validateResourcePackUrl(resourcePack) && !ClientDownloadManager.isResourcePackDownloaded(resourcePack, msg.getResourcePackHash()))
         {
@@ -123,6 +122,6 @@ public class DownloaderClientLoginHandler implements IDownloaderLoginClientHandl
         if (!(networkManager.getRemoteAddress() instanceof InetSocketAddress))
             throw new IllegalStateException("Failed to create URL to server");
         InetSocketAddress address = (InetSocketAddress) networkManager.getRemoteAddress();
-        return "http://" + address.getAddress().getHostAddress();
+        return "://" + address.getAddress().getHostAddress();
     }
 }

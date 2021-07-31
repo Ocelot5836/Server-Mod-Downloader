@@ -22,6 +22,7 @@ public class ClientboundNotifyFileStatusMessage extends SimpleSonarLoginMessage<
     private final Set<DownloadableModFile> files;
     private String resourcePack;
     private String resourcePackHash;
+    private boolean secure;
     private int port;
 
     public ClientboundNotifyFileStatusMessage()
@@ -29,11 +30,12 @@ public class ClientboundNotifyFileStatusMessage extends SimpleSonarLoginMessage<
         this.files = new HashSet<>();
     }
 
-    public ClientboundNotifyFileStatusMessage(String resourcePack, @Nullable String resourcePackHash)
+    public ClientboundNotifyFileStatusMessage(String resourcePack, @Nullable String resourcePackHash, boolean secure)
     {
         this.files = new HashSet<>(ModFileManager.getFiles());
         this.resourcePack = resourcePack;
         this.resourcePackHash = resourcePackHash;
+        this.secure = secure;
         this.port = ServerConfig.INSTANCE.httpServerPort.get();
     }
 
@@ -58,6 +60,7 @@ public class ClientboundNotifyFileStatusMessage extends SimpleSonarLoginMessage<
         }
         this.resourcePack = buf.readUtf();
         this.resourcePackHash = buf.readUtf();
+        this.secure = buf.readBoolean();
         this.port = buf.readVarInt();
     }
 
@@ -78,6 +81,7 @@ public class ClientboundNotifyFileStatusMessage extends SimpleSonarLoginMessage<
         }
         buf.writeUtf(this.resourcePack);
         buf.writeUtf(this.resourcePackHash);
+        buf.writeBoolean(this.secure);
         buf.writeVarInt(this.port);
     }
 
@@ -112,6 +116,15 @@ public class ClientboundNotifyFileStatusMessage extends SimpleSonarLoginMessage<
     public String getResourcePackHash()
     {
         return resourcePackHash;
+    }
+
+    /**
+     * @return The protocol to communicate to the HTTP server with
+     */
+    @OnlyIn(Dist.CLIENT)
+    public String getProtocol()
+    {
+        return this.secure ? "https" : "http";
     }
 
     /**

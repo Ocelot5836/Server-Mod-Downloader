@@ -39,7 +39,7 @@ public class DownloadableResourcePackFile implements DownloadableFile
     @Override
     public Component getDisplayName()
     {
-        return new TextComponent("resources.zip").withStyle(this.url.startsWith("https") ? ChatFormatting.GREEN : ChatFormatting.RED);
+        return new TextComponent("resources.zip");
     }
 
     @Override
