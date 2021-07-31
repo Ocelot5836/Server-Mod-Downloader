@@ -140,25 +140,6 @@ public class ClientDownloadManager
         }));
     }
 
-    private static String getFileName(String[] modIds, HttpResponse response)
-    {
-        Header header = response.getFirstHeader("Content-Disposition");
-        if (header == null || header.getElements().length == 0)
-            return String.join("-", modIds) + ".jar";
-        for (HeaderElement element : header.getElements())
-        {
-            if (element.getName().equalsIgnoreCase("attachment"))
-            {
-                NameValuePair nmv = element.getParameterByName("filename");
-                if (nmv != null)
-                {
-                    return nmv.getValue();
-                }
-            }
-        }
-        return String.join("-", modIds) + ".jar";
-    }
-
     public static CompletableFuture<ClientDownload> downloadMod(DownloadableModFile modFile, String url, Consumer<ClientDownload> completeListener)
     {
         return CompletableFuture.supplyAsync(() ->
@@ -166,15 +147,7 @@ public class ClientDownloadManager
             InputStream stream = null;
             try
             {
-                Pair<HttpResponse, InputStream> pair = getStream(url);
-                HttpResponse response = pair.getFirst();
-                stream = pair.getSecond();
-
-                long fileSize = response.getFirstHeader("Content-Length") != null ? Long.parseLong(response.getFirstHeader("Content-Length").getValue()) : -1;
-                if (fileSize > ClientConfig.INSTANCE.maxDownloadSize.get() * 1024 * 1024)
-                    throw new IOException("Download for " + modFile.getVisualMods() + " is too large. Max Size: " + UnitHelper.abbreviateSize(ClientConfig.INSTANCE.maxDownloadSize.get() * 1024 * 1024) + ", Download Size: " + UnitHelper.abbreviateSize(fileSize));
-
-                Path location = CACHE_FOLDER.resolve(getFileName(modFile.getModIds(), response));
+                Path location = CACHE_FOLDER.resolve(modFile.getFileName());
 
                 if (location.getParent() != null && !Files.exists(location.getParent()))
                     Files.createDirectories(location.getParent());
@@ -191,8 +164,7 @@ public class ClientDownloadManager
                         {
                             // If it is, then skip downloading and move on
                             LOGGER.info("Skipped downloading file: " + location);
-                            IOUtils.closeQuietly(pair.getSecond());
-                            ClientDownload download = new ClientDownload(fileSize);
+                            ClientDownload download = new ClientDownload(Files.size(location));
                             Minecraft.getInstance().execute(() ->
                             {
                                 download.completeSuccessfully();
@@ -205,6 +177,14 @@ public class ClientDownloadManager
                     {
                     }
                 }
+
+                Pair<HttpResponse, InputStream> pair = getStream(url);
+                HttpResponse response = pair.getFirst();
+                stream = pair.getSecond();
+
+                long fileSize = response.getFirstHeader("Content-Length") != null ? Long.parseLong(response.getFirstHeader("Content-Length").getValue()) : -1;
+                if (fileSize > ClientConfig.INSTANCE.maxDownloadSize.get() * 1024 * 1024)
+                    throw new IOException("Download for " + modFile.getVisualMods() + " is too large. Max Size: " + UnitHelper.abbreviateSize(ClientConfig.INSTANCE.maxDownloadSize.get() * 1024 * 1024) + ", Download Size: " + UnitHelper.abbreviateSize(fileSize));
 
                 ClientDownload download = new ClientDownload(fileSize);
                 // Perform the download
@@ -235,7 +215,7 @@ public class ClientDownloadManager
                         download.completeSuccessfully();
                         Minecraft.getInstance().execute(() -> completeListener.accept(download));
 
-                        REPLACED_MODS.put(modFile.getVisualMods(), Pair.of(location, FMLPaths.MODSDIR.get().resolve(getFileName(modFile.getModIds(), response)).toAbsolutePath()));
+                        REPLACED_MODS.put(modFile.getVisualMods(), Pair.of(location, FMLPaths.MODSDIR.get().resolve(modFile.getFileName()).toAbsolutePath()));
                         // Delete all mod files associated with the files the new mods have
                         Arrays.stream(modFile.getModIds()).map(modId -> ModList.get().getModFileById(modId)).filter(Objects::nonNull).distinct().forEach(modFileInfo -> REMOVED_MODS.add(modFileInfo.getFile().getFilePath()));
                     }

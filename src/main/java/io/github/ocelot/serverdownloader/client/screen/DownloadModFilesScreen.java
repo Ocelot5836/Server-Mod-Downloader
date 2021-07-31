@@ -21,6 +21,7 @@ import net.minecraft.util.HttpUtil;
 import net.minecraft.util.Mth;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -41,7 +42,7 @@ public class DownloadModFilesScreen extends Screen
 
     private Button cancelButton;
 
-    public DownloadModFilesScreen(ServerData server, String httpServer, Set<DownloadableFile> missingFiles)
+    public DownloadModFilesScreen(ServerData server, String httpServer, Collection<DownloadableFile> missingFiles)
     {
         super(new TranslatableComponent("screen." + ServerDownloader.MOD_ID + ".download", missingFiles.size()));
         this.downloadingFiles = new HashMap<>();

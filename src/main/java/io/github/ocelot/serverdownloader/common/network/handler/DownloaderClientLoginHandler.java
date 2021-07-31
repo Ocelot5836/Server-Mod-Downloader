@@ -24,6 +24,8 @@ import net.minecraftforge.fml.network.NetworkEvent;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -34,7 +36,7 @@ public class DownloaderClientLoginHandler implements IDownloaderLoginClientHandl
     @Override
     public void handleNotifyFileStatusMessage(ClientboundNotifyFileStatusMessage msg, NetworkEvent.Context ctx)
     {
-        Set<DownloadableFile> missingFiles = ModFileManager.getMissingFiles(msg.getFiles());
+        List<DownloadableFile> missingFiles = new ArrayList<>(ModFileManager.getMissingFiles(msg.getFiles()));
         String httpServer = getUrl(ctx.getNetworkManager()) + ":" + msg.getPort();
         ServerData server = Minecraft.getInstance().getCurrentServer();
         String resourcePack = msg.getResourcePack().startsWith("level://") ? "http://" + ((InetSocketAddress) ctx.getNetworkManager().getRemoteAddress()).getAddress().getHostAddress() + ":" + msg.getPort() + "/resources.zip" : msg.getResourcePack();

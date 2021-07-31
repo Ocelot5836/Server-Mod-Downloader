@@ -87,7 +87,7 @@ public class ModFileManager
                     return null;
                 try (FileInputStream is = new FileInputStream(file.getFilePath().toFile()))
                 {
-                    return new DownloadableModFile(info.getMods().stream().map(IModInfo::getModId).toArray(String[]::new), DigestUtils.sha1Hex(is));
+                    return new DownloadableModFile(info.getFile().getFilePath().getFileName().toString(), info.getMods().stream().map(IModInfo::getModId).toArray(String[]::new), DigestUtils.sha1Hex(is));
                 }
                 catch (IOException e)
                 {

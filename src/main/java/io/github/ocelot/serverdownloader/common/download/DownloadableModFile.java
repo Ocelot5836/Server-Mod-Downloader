@@ -6,8 +6,6 @@ import io.github.ocelot.serverdownloader.client.download.ClientDownload;
 import io.github.ocelot.serverdownloader.client.download.ClientDownloadManager;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.TextComponent;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
 import java.util.Arrays;
 import java.util.Objects;
@@ -20,17 +18,28 @@ import java.util.function.Consumer;
 public class DownloadableModFile implements DownloadableFile
 {
     public static final Codec<DownloadableModFile> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+            Codec.STRING.fieldOf("file_name").forGetter(DownloadableModFile::getFileName),
             Codec.STRING.listOf().fieldOf("mod_ids").forGetter(file -> Arrays.asList(file.getModIds())),
             Codec.STRING.fieldOf("hash").forGetter(DownloadableModFile::getHash)
-    ).apply(instance, (modIds, hash) -> new DownloadableModFile(modIds.toArray(new String[0]), hash)));
+    ).apply(instance, (fileName, modIds, hash) -> new DownloadableModFile(fileName, modIds.toArray(new String[0]), hash)));
 
+    private final String fileName;
     private final String[] modIds;
     private final String hash;
 
-    public DownloadableModFile(String[] modIds, String hash)
+    public DownloadableModFile(String fileName, String[] modIds, String hash)
     {
+        this.fileName = fileName;
         this.modIds = modIds;
         this.hash = hash;
+    }
+
+    /**
+     * @return The name of the file after it has been downloaded
+     */
+    public String getFileName()
+    {
+        return fileName;
     }
 
     /**
@@ -66,7 +75,7 @@ public class DownloadableModFile implements DownloadableFile
     @Override
     public Component getDisplayName()
     {
-        return new TextComponent(this.getVisualMods());
+        return new TextComponent(this.fileName);
     }
 
     @Override

@@ -1,7 +1,10 @@
 package io.github.ocelot.serverdownloader.client.download;
 
 import io.github.ocelot.serverdownloader.common.download.DownloadableFile;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.TextComponent;
 
 import java.util.concurrent.CompletableFuture;
@@ -19,6 +22,14 @@ public class DownloadableResourcePackFile implements DownloadableFile
         this.url = url;
     }
 
+    /**
+     * @return The location of the file download
+     */
+    public String getUrl()
+    {
+        return url;
+    }
+
     @Override
     public CompletableFuture<ClientDownload> createDownload(String httpServer, Consumer<ClientDownload> completeListener)
     {
@@ -28,7 +39,7 @@ public class DownloadableResourcePackFile implements DownloadableFile
     @Override
     public Component getDisplayName()
     {
-        return new TextComponent("resources.zip");
+        return new TextComponent("resources.zip").withStyle(this.url.startsWith("https") ? ChatFormatting.GREEN : ChatFormatting.RED);
     }
 
     @Override
