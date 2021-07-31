@@ -22,7 +22,7 @@ public class DownloadableResourcePackFile implements DownloadableFile
     @Override
     public CompletableFuture<ClientDownload> createDownload(String httpServer, Consumer<ClientDownload> completeListener)
     {
-        return ClientDownloadManager.downloadResourcePack(this.url, completeListener);
+        return ClientDownloadManager.downloadResourcePack(this, this.url, completeListener);
     }
 
     @Override
@@ -33,6 +33,12 @@ public class DownloadableResourcePackFile implements DownloadableFile
 
     @Override
     public boolean needsRestart()
+    {
+        return false;
+    }
+
+    @Override
+    public boolean ignoreErrors()
     {
         return false;
     }

@@ -9,6 +9,7 @@ import io.github.ocelot.serverdownloader.common.download.DownloadableFile;
 import io.github.ocelot.sonar.client.render.ShapeRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.toasts.SystemToast;
 import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.gui.screens.DisconnectedScreen;
 import net.minecraft.client.gui.screens.Screen;
@@ -19,10 +20,12 @@ import net.minecraft.network.chat.*;
 import net.minecraft.util.HttpUtil;
 import net.minecraft.util.Mth;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -69,6 +72,34 @@ public class DownloadModFilesScreen extends Screen
                 this.cancel();
                 if (this.error == null)
                     this.error = exception.getCause();
+            }
+            if (download != null && download.hasFailed())
+            {
+                try
+                {
+                    download.getCompletionFuture().join();
+                    if (this.error == null)
+                    {
+                        this.error = new IOException("Failed to download file");
+                        this.error.printStackTrace();
+                    }
+                }
+                catch (CompletionException e)
+                {
+                    e.printStackTrace();
+                    if (this.error == null)
+                        this.error = e.getCause();
+                }
+
+                if (!download.shouldIgnoreErrors()) // If errors are not ignored, report to the user
+                {
+                    this.cancel();
+                }
+                else
+                {
+                    SystemToast.multiline(Minecraft.getInstance(), SystemToast.SystemToastIds.PACK_COPY_FAILURE, new TranslatableComponent("toast." + ServerDownloader.MOD_ID + ".download_failure"), new TextComponent(this.error.getMessage()));
+                    this.error = null;
+                }
             }
             return download;
         }, Minecraft.getInstance())));

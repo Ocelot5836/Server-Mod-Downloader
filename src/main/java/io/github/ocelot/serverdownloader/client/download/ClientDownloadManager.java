@@ -218,7 +218,7 @@ public class ClientDownloadManager
                         while ((readAmount = in.read(buffer)) != -1)
                         {
                             if (!FMLLoader.isProduction()) // Debug only
-                                Thread.sleep(50);
+                                Thread.sleep(Math.max(1, 50 - (fileSize / 1024 / 1024)));
 
                             if (download.isCancelled())
                                 throw new CancellationException("Download cancelled");
@@ -256,7 +256,7 @@ public class ClientDownloadManager
                     if (e != null)
                     {
                         e.printStackTrace();
-                        download.completeExceptionally(e);
+                        download.completeExceptionally(e, modFile.ignoreErrors());
                         Minecraft.getInstance().execute(() -> completeListener.accept(download));
                     }
                     return null;
@@ -266,12 +266,18 @@ public class ClientDownloadManager
             catch (Exception e)
             {
                 IOUtils.closeQuietly(stream);
-                throw new CompletionException("Failed to request mod file: " + url, e);
+                ClientDownload download = new ClientDownload(-1);
+                Minecraft.getInstance().execute(() ->
+                {
+                    download.completeExceptionally(new CompletionException("Failed to request mod file: " + modFile.getVisualMods(), e), modFile.ignoreErrors());
+                    Minecraft.getInstance().execute(() -> completeListener.accept(download));
+                });
+                return download;
             }
         }, HttpUtil.DOWNLOAD_EXECUTOR);
     }
 
-    public static CompletableFuture<ClientDownload> downloadResourcePack(String url, Consumer<ClientDownload> completeListener)
+    public static CompletableFuture<ClientDownload> downloadResourcePack(DownloadableResourcePackFile resourcePack, String url, Consumer<ClientDownload> completeListener)
     {
         return CompletableFuture.supplyAsync(() ->
         {
@@ -312,6 +318,9 @@ public class ClientDownloadManager
                         ByteBuffer buffer = ByteBuffer.allocate(ClientConfig.INSTANCE.downloadBufferSize.get());
                         while ((readAmount = in.read(buffer)) != -1)
                         {
+                            if (!FMLLoader.isProduction()) // Debug only
+                                Thread.sleep(Math.max(1, 50 - (fileSize / 1024 / 1024)));
+
                             if (download.isCancelled())
                                 throw new CancellationException("Download cancelled");
 
@@ -344,7 +353,7 @@ public class ClientDownloadManager
                     if (e != null)
                     {
                         e.printStackTrace();
-                        download.completeExceptionally(e);
+                        download.completeExceptionally(e, resourcePack.ignoreErrors());
                         Minecraft.getInstance().execute(() -> completeListener.accept(download));
                     }
                     return null;
@@ -354,7 +363,13 @@ public class ClientDownloadManager
             catch (Exception e)
             {
                 IOUtils.closeQuietly(stream);
-                throw new CompletionException("Failed to request server resources: " + url, e);
+                ClientDownload download = new ClientDownload(-1);
+                Minecraft.getInstance().execute(() ->
+                {
+                    download.completeExceptionally(new CompletionException("Failed to request server resources: " + url, e), resourcePack.ignoreErrors());
+                    Minecraft.getInstance().execute(() -> completeListener.accept(download));
+                });
+                return download;
             }
         }, HttpUtil.DOWNLOAD_EXECUTOR);
     }

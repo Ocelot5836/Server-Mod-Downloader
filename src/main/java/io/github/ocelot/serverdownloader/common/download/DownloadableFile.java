@@ -32,4 +32,9 @@ public interface DownloadableFile
      * @return Whether the game needs to be restarted before joining the server
      */
     boolean needsRestart();
+
+    /**
+     * @return Whether the errors thrown by downloading this file should be ignored
+     */
+    boolean ignoreErrors();
 }

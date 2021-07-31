@@ -2,7 +2,6 @@ package io.github.ocelot.serverdownloader.client.download;
 
 import org.jetbrains.annotations.NotNull;
 
-import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -83,7 +82,15 @@ public class ClientDownload implements Future<Void>
      */
     public boolean hasFailed()
     {
-        return this.status == Status.FAILED;
+        return this.status == Status.FAILED || this.status == Status.FAILED_IGNORE_ERRORS;
+    }
+
+    /**
+     * @return If download errors should be ignored
+     */
+    public boolean shouldIgnoreErrors()
+    {
+        return this.status == Status.FAILED_IGNORE_ERRORS;
     }
 
     /**
@@ -113,9 +120,9 @@ public class ClientDownload implements Future<Void>
         this.completionFuture.complete(null);
     }
 
-    synchronized void completeExceptionally(Throwable t)
+    synchronized void completeExceptionally(Throwable t, boolean ignoreErrors)
     {
-        this.status = Status.FAILED;
+        this.status = ignoreErrors ? Status.FAILED_IGNORE_ERRORS : Status.FAILED;
         this.completionFuture.completeExceptionally(t);
     }
 
@@ -132,6 +139,6 @@ public class ClientDownload implements Future<Void>
      */
     public enum Status
     {
-        DOWNLOADING, SUCCESS, FAILED
+        DOWNLOADING, SUCCESS, FAILED, FAILED_IGNORE_ERRORS
     }
 }

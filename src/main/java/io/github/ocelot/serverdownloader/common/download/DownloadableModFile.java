@@ -76,6 +76,12 @@ public class DownloadableModFile implements DownloadableFile
     }
 
     @Override
+    public boolean ignoreErrors()
+    {
+        return false;
+    }
+
+    @Override
     public boolean equals(Object o)
     {
         if (this == o) return true;
